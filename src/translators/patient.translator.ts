@@ -450,7 +450,7 @@ export class PatientTranslator {
                 : undefined,
             active: data.active ?? true,
             ministry_id: data.ministry_fhir_id ?? data.ministry_id,
-            ministry_synced: data.ministry_synced ?? false,
+            ministry_synced: data.ministry_synced === true || data.ministry_synced === 'true',
         };
 
         return localToFHIR(patient);
