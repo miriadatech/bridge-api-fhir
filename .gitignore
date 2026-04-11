@@ -1,0 +1,38 @@
+﻿# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Production
+/dist
+/build
+
+# Misc
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.pem
+*.log
+
+# Testing
+/coverage
+.nyc_output
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+.dockerignore
+Dockerfile
+
+# Documents
+/documents/*
+!documents/.gitkeep
+
+# Logs
+/logs/*
+!logs/.gitkeep

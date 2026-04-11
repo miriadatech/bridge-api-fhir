@@ -1,0 +1,11 @@
+﻿import { Router } from 'express';
+import { authMiddleware } from '../middleware/auth.middleware';
+import { EncounterController } from '../controllers/encounter.controller';
+const router = Router();
+const encounterController = new EncounterController();
+router.get('/encounter', authMiddleware, encounterController.search);
+router.post('/encounter', authMiddleware, encounterController.create);
+router.get('/encounter/:id', authMiddleware, encounterController.getById);
+router.put('/encounter/:id', authMiddleware, encounterController.update);
+router.delete('/encounter/:id', authMiddleware, encounterController.delete);
+export default router;
