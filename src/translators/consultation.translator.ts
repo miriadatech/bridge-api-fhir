@@ -1,620 +1,442 @@
-import type * as fhir from 'fhir/r4';
+// src/translators/consultation.translator.ts
 
-// =============================================
-// INTERFACES — JSON simple (nuestra BD)
-// =============================================
-export interface LocalConsultation {
-    id: string;
-    patient_id: string;
-    consultation_code?: string;
-    consultation_type: 'primera_vez' | 'control' | 'urgencia' | 'domiciliaria';
-    specialty: string;
+import { fhirValidator, ValidationResult } from '../validators/fhir.validator';
 
-    // Médico e institución
-    doctor_name: string;
-    doctor_license?: string;
-    institution_name?: string;
-    institution_code?: string;
+// ─── Interfaces de entrada ────────────────────────────────────────────────────
 
-    // Fechas
-    consultation_date: Date | string;
-    next_appointment?: Date | string | null;
-
-    // Clínica
-    reason: string;
-    symptoms?: string;
-    diagnosis_code?: string;   // CIE-10
-    diagnosis_desc?: string;
-    treatment_plan?: string;
-    notes?: string;
-
-    // Signos vitales
-    weight_kg?: number;
-    height_cm?: number;
-    temperature_c?: number;
-    blood_pressure?: string;
-    heart_rate?: number;
-    oxygen_saturation?: number;
-
-    // Control
-    status: 'scheduled' | 'completed' | 'cancelled';
-    ministry_synced: boolean;
-    ministry_fhir_id?: string;
-    active: boolean;
-    created_at?: Date | string;
-    updated_at?: Date | string;
-
-    // Relaciones (opcionales, cuando se cargan con JOIN)
-    prescriptions?: LocalPrescription[];
-    lab_orders?: LocalLabOrder[];
-
-    // Datos del paciente (JOIN)
-    patient_identifier_type?: string;
-    patient_identifier_value?: string;
-    patient_full_name?: string;
-}
-
-export interface LocalPrescription {
-    id: string;
-    consultation_id: string;
-    patient_id: string;
-    medication_name: string;
+export interface MedicationData {
     medication_code?: string;
-    dosage?: string;
-    frequency?: string;
-    duration?: string;
-    route?: 'oral' | 'intravenosa' | 'intramuscular' | 'topica' | 'sublingual' | 'inhalatoria';
-    instructions?: string;
-    ministry_synced: boolean;
-    ministry_fhir_id?: string;
-    active: boolean;
-    created_at?: Date | string;
+    medication_display: string;
+    dosage: string;
+    frequency: string;
+    route?: string;
 }
 
-export interface LocalLabOrder {
+export interface LabOrderData {
+    code: string;
+    display: string;
+    ordered_date: string;
+}
+
+export interface ConsultationData {
     id: string;
-    consultation_id: string;
     patient_id: string;
-    exam_name: string;
-    exam_code?: string;
-    exam_type?: 'laboratorio' | 'imagen' | 'patologia' | 'otro';
-    priority: 'urgent' | 'routine';
-    instructions?: string;
-    result?: string;
-    result_date?: Date | string | null;
-    status: 'pending' | 'completed' | 'cancelled';
-    ministry_synced: boolean;
-    ministry_fhir_id?: string;
-    active: boolean;
-    created_at?: Date | string;
+    encounter_id: string;
+    consultation_date: string;
+    reason_for_visit: string;
+    chief_complaint?: string;
+    assessment?: string;
+    plan?: string;
+    medications: MedicationData[];
+    lab_orders: LabOrderData[];
 }
 
-// =============================================
-// MAPEOS FHIR
-// =============================================
-const CONSULTATION_TYPE_MAP: Record<string, fhir.Coding> = {
-    primera_vez: {
-        system: 'http://snomed.info/sct',
-        code: '11429006',
-        display: 'Consultation - action'
-    },
-    control: {
-        system: 'http://snomed.info/sct',
-        code: '390906007',
-        display: 'Follow-up encounter'
-    },
-    urgencia: {
-        system: 'http://snomed.info/sct',
-        code: '50849002',
-        display: 'Emergency room admission'
-    },
-    domiciliaria: {
-        system: 'http://snomed.info/sct',
-        code: '439708006',
-        display: 'Home visit'
-    }
-};
+// ─── Interfaces FHIR R4 ───────────────────────────────────────────────────────
 
-const STATUS_MAP: Record<string, fhir.Encounter['status']> = {
-    scheduled: 'planned',
-    completed: 'finished',
-    cancelled: 'cancelled'
-};
+interface FHIRCoding {
+    system?: string;
+    code?: string;
+    display?: string;
+}
 
-const ROUTE_MAP: Record<string, fhir.Coding> = {
-    oral: { system: 'http://snomed.info/sct', code: '26643006', display: 'Oral route' },
-    intravenosa: { system: 'http://snomed.info/sct', code: '47625008', display: 'Intravenous route' },
-    intramuscular: { system: 'http://snomed.info/sct', code: '78421000', display: 'Intramuscular route' },
-    topica: { system: 'http://snomed.info/sct', code: '6064005', display: 'Topical route' },
-    sublingual: { system: 'http://snomed.info/sct', code: '37839007', display: 'Sublingual route' },
-    inhalatoria: { system: 'http://snomed.info/sct', code: '18679011000001101', display: 'Inhalation route' }
-};
+interface FHIRCodeableConcept {
+    coding?: FHIRCoding[];
+    text?: string;
+}
 
-// =============================================
-// CONSULTATION TRANSLATOR
-// =============================================
+interface FHIRReference {
+    reference: string;
+}
+
+interface FHIRDosageInstruction {
+    text?: string;
+    route?: FHIRCodeableConcept;
+    timing?: {
+        repeat?: {
+            frequency?: number;
+            period?: number;
+            periodUnit?: string;
+        };
+    };
+    additionalInstruction?: FHIRCodeableConcept[];
+}
+
+interface FHIRPatientResource {
+    resourceType: 'Patient';
+    id: string;
+    identifier: Array<{
+        system: string;
+        value: string;
+    }>;
+    name: Array<{
+        use: string;
+        text: string;
+    }>;
+}
+
+interface FHIREncounterResource {
+    resourceType: 'Encounter';
+    id: string;
+    status: string;
+    class: {
+        system: string;
+        code: string;
+        display: string;
+    };
+    subject: FHIRReference;
+    period?: {
+        start: string;
+    };
+    reasonCode?: FHIRCodeableConcept[];
+    extension?: Array<{
+        url: string;
+        valueString?: string;
+    }>;
+}
+
+interface FHIRConditionResource {
+    resourceType: 'Condition';
+    id: string;
+    subject: FHIRReference;
+    encounter: FHIRReference;
+    code: FHIRCodeableConcept;
+    note?: Array<{ text: string }>;
+    recordedDate?: string;
+}
+
+interface FHIRMedicationRequestResource {
+    resourceType: 'MedicationRequest';
+    id: string;
+    status: string;
+    intent: string;
+    subject: FHIRReference;
+    encounter: FHIRReference;
+    medicationCodeableConcept: FHIRCodeableConcept;
+    dosageInstruction?: FHIRDosageInstruction[];
+    authoredOn?: string;
+}
+
+interface FHIRServiceRequestResource {
+    resourceType: 'ServiceRequest';
+    id: string;
+    status: string;
+    intent: string;
+    subject: FHIRReference;
+    encounter: FHIRReference;
+    code: FHIRCodeableConcept;
+    occurrenceDateTime?: string;
+}
+
+type FHIRResource =
+    | FHIRPatientResource
+    | FHIREncounterResource
+    | FHIRConditionResource
+    | FHIRMedicationRequestResource
+    | FHIRServiceRequestResource;
+
+interface FHIREntry {
+    fullUrl: string;
+    resource: FHIRResource;
+    request: {
+        method: string;
+        url: string;
+    };
+}
+
+interface FHIRBundle {
+    resourceType: 'Bundle';
+    id: string;
+    type: string;
+    timestamp: string;
+    entry: FHIREntry[];
+}
+
+// ─── Sistemas de codificación ─────────────────────────────────────────────────
+
+const SYSTEMS = {
+    PATIENT_ID: 'https://www.minsalud.gov.co/fhir/sid/patient-id',
+    ENCOUNTER_CLASS: 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
+    CONDITION_CATEGORY: 'http://terminology.hl7.org/CodeSystem/condition-category',
+    SNOMED: 'http://snomed.info/sct',
+    LOINC: 'http://loinc.org',
+    MINSALUD_MED: 'https://www.minsalud.gov.co/fhir/CodeSystem/medication-codes',
+    MINSALUD_LAB: 'https://www.minsalud.gov.co/fhir/CodeSystem/lab-codes',
+    ROUTE: 'http://terminology.hl7.org/CodeSystem/v3-RouteOfAdministration',
+    ENCOUNTER_MODALIDAD: 'http://minsalud.gov.co/fhir/StructureDefinition/encounter-modalidad',
+} as const;
+
+// ─── Clase principal ──────────────────────────────────────────────────────────
+
 export class ConsultationTranslator {
 
-    // ------------------------------------------
-    // Consulta → FHIR Encounter
-    // ------------------------------------------
-    static toFHIREncounter(consultation: LocalConsultation): fhir.Encounter {
-        const encounter: fhir.Encounter = {
-            resourceType: 'Encounter',
-            id: consultation.ministry_fhir_id || consultation.id,
-            status: STATUS_MAP[consultation.status] || 'finished',
+    // ── Entry point principal ─────────────────────────────────────────────────
 
-            class: {
-                system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode',
-                code: consultation.consultation_type === 'urgencia' ? 'EMER' : 'AMB',
-                display: consultation.consultation_type === 'urgencia' ? 'Emergency' : 'Ambulatory'
-            },
+    toFHIRBundle(data: ConsultationData): FHIRBundle {
+        const timestamp = new Date().toISOString();
 
-            type: [
-                {
-                    coding: [CONSULTATION_TYPE_MAP[consultation.consultation_type]],
-                    text: consultation.consultation_type
-                }
-            ],
+        const entries: FHIREntry[] = [
+            this.buildPatientEntry(data),
+            this.buildEncounterEntry(data),
+        ];
 
-            subject: {
-                reference: `Patient/${consultation.patient_id}`
-            },
+        // Agregar Condition solo si hay assessment o chief_complaint
+        if (data.assessment || data.chief_complaint) {
+            entries.push(this.buildConditionEntry(data));
+        }
 
-            participant: [
-                {
-                    type: [
-                        {
-                            coding: [
-                                {
-                                    system: 'http://terminology.hl7.org/CodeSystem/v3-ParticipationType',
-                                    code: 'PPRF',
-                                    display: 'Primary performer'
-                                }
-                            ]
-                        }
-                    ],
-                    individual: {
-                        display: consultation.doctor_name,
-                        ...(consultation.doctor_license && {
-                            identifier: {
-                                system: 'https://www.minsalud.gov.co/registro-medico',
-                                value: consultation.doctor_license
-                            }
-                        })
-                    }
-                }
-            ],
-
-            period: {
-                start: new Date(consultation.consultation_date).toISOString(),
-                ...(consultation.next_appointment && {
-                    end: new Date(consultation.next_appointment).toISOString()
-                })
-            },
-
-            reasonCode: [
-                {
-                    text: consultation.reason,
-                    ...(consultation.symptoms && {
-                        coding: [
-                            {
-                                system: 'http://snomed.info/sct',
-                                display: consultation.symptoms
-                            }
-                        ]
-                    })
-                }
-            ],
-
-            ...(consultation.institution_name && {
-                serviceProvider: {
-                    display: consultation.institution_name,
-                    ...(consultation.institution_code && {
-                        identifier: {
-                            system: 'https://www.supersalud.gov.co/REPS',
-                            value: consultation.institution_code
-                        }
-                    })
-                }
-            }),
-
-            ...(consultation.notes && {
-                text: {
-                    status: 'generated',
-                    div: `<div xmlns="http://www.w3.org/1999/xhtml">${consultation.notes}</div>`
-                }
-            }),
-
-            meta: {
-                profile: ['http://hl7.org/fhir/StructureDefinition/Encounter'],
-                lastUpdated: new Date().toISOString()
-            }
-        };
-
-        return encounter;
-    }
-
-    // ------------------------------------------
-    // Diagnóstico → FHIR Condition
-    // ------------------------------------------
-    static toFHIRCondition(consultation: LocalConsultation): fhir.Condition | null {
-        if (!consultation.diagnosis_code && !consultation.diagnosis_desc) return null;
-
-        const condition: fhir.Condition = {
-            resourceType: 'Condition',
-            id: `condition-${consultation.id}`,
-
-            clinicalStatus: {
-                coding: [
-                    {
-                        system: 'http://terminology.hl7.org/CodeSystem/condition-clinical',
-                        code: 'active',
-                        display: 'Active'
-                    }
-                ]
-            },
-
-            verificationStatus: {
-                coding: [
-                    {
-                        system: 'http://terminology.hl7.org/CodeSystem/condition-ver-status',
-                        code: 'confirmed',
-                        display: 'Confirmed'
-                    }
-                ]
-            },
-
-            code: {
-                coding: consultation.diagnosis_code
-                    ? [
-                        {
-                            system: 'http://hl7.org/fhir/sid/icd-10',
-                            code: consultation.diagnosis_code,
-                            display: consultation.diagnosis_desc || consultation.diagnosis_code
-                        }
-                    ]
-                    : [],
-                text: consultation.diagnosis_desc || consultation.diagnosis_code
-            },
-
-            subject: {
-                reference: `Patient/${consultation.patient_id}`
-            },
-
-            encounter: {
-                reference: `Encounter/${consultation.ministry_fhir_id || consultation.id}`
-            },
-
-            onsetDateTime: new Date(consultation.consultation_date).toISOString(),
-
-            note: consultation.treatment_plan
-                ? [{ text: consultation.treatment_plan }]
-                : undefined,
-
-            meta: {
-                profile: ['http://hl7.org/fhir/StructureDefinition/Condition'],
-                lastUpdated: new Date().toISOString()
-            }
-        };
-
-        return condition;
-    }
-
-    // ------------------------------------------
-    // Medicamento → FHIR MedicationRequest
-    // ------------------------------------------
-    static toFHIRMedicationRequest(
-        prescription: LocalPrescription,
-        patientId: string,
-        encounterId: string
-    ): fhir.MedicationRequest {
-        const medRequest: fhir.MedicationRequest = {
-            resourceType: 'MedicationRequest',
-            id: prescription.ministry_fhir_id || prescription.id,
-            status: prescription.active ? 'active' : 'stopped',
-            intent: 'order',
-
-            medicationCodeableConcept: {
-                coding: prescription.medication_code
-                    ? [
-                        {
-                            system: 'https://www.invima.gov.co/CUM',
-                            code: prescription.medication_code,
-                            display: prescription.medication_name
-                        }
-                    ]
-                    : [],
-                text: prescription.medication_name
-            },
-
-            subject: {
-                reference: `Patient/${patientId}`
-            },
-
-            encounter: {
-                reference: `Encounter/${encounterId}`
-            },
-
-            dosageInstruction: [
-                {
-                    text: [
-                        prescription.dosage,
-                        prescription.frequency,
-                        prescription.duration
-                    ]
-                        .filter(Boolean)
-                        .join(' - '),
-
-                    ...(prescription.route && {
-                        route: {
-                            coding: [ROUTE_MAP[prescription.route]],
-                            text: prescription.route
-                        }
-                    }),
-
-                    ...(prescription.dosage && {
-                        doseAndRate: [
-                            {
-                                doseQuantity: {
-                                    value: parseFloat(prescription.dosage) || 0,
-                                    unit: prescription.dosage.replace(/[0-9.]/g, '').trim() || 'unidad'
-                                }
-                            }
-                        ]
-                    }),
-
-                    patientInstruction: prescription.instructions || undefined
-                }
-            ],
-
-            meta: {
-                profile: ['http://hl7.org/fhir/StructureDefinition/MedicationRequest'],
-                lastUpdated: new Date().toISOString()
-            }
-        };
-
-        return medRequest;
-    }
-
-    // ------------------------------------------
-    // Examen → FHIR ServiceRequest
-    // ------------------------------------------
-    static toFHIRServiceRequest(
-        labOrder: LocalLabOrder,
-        patientId: string,
-        encounterId: string
-    ): fhir.ServiceRequest {
-        const serviceRequest: fhir.ServiceRequest = {
-            resourceType: 'ServiceRequest',
-            id: labOrder.ministry_fhir_id || labOrder.id,
-            status: labOrder.status === 'pending'
-                ? 'active'
-                : labOrder.status === 'completed'
-                    ? 'completed'
-                    : 'revoked',
-            intent: 'order',
-            priority: labOrder.priority === 'urgent' ? 'urgent' : 'routine',
-
-            code: {
-                coding: labOrder.exam_code
-                    ? [
-                        {
-                            system: 'https://www.minsalud.gov.co/CUPS',
-                            code: labOrder.exam_code,
-                            display: labOrder.exam_name
-                        }
-                    ]
-                    : [],
-                text: labOrder.exam_name
-            },
-
-            subject: {
-                reference: `Patient/${patientId}`
-            },
-
-            encounter: {
-                reference: `Encounter/${encounterId}`
-            },
-
-            note: labOrder.instructions
-                ? [{ text: labOrder.instructions }]
-                : undefined,
-
-            meta: {
-                profile: ['http://hl7.org/fhir/StructureDefinition/ServiceRequest'],
-                lastUpdated: new Date().toISOString()
-            }
-        };
-
-        return serviceRequest;
-    }
-
-    // ------------------------------------------
-    // Signos vitales → FHIR Observation[]
-    // ------------------------------------------
-    static toFHIRVitalSigns(
-        consultation: LocalConsultation,
-        patientId: string
-    ): fhir.Observation[] {
-        const observations: fhir.Observation[] = [];
-        const encounterId = consultation.ministry_fhir_id || consultation.id;
-        const effectiveDate = new Date(consultation.consultation_date).toISOString();
-
-        const baseObs = (): Partial<fhir.Observation> => ({
-            resourceType: 'Observation',
-            status: 'final',
-            category: [
-                {
-                    coding: [
-                        {
-                            system: 'http://terminology.hl7.org/CodeSystem/observation-category',
-                            code: 'vital-signs',
-                            display: 'Vital Signs'
-                        }
-                    ]
-                }
-            ],
-            subject: { reference: `Patient/${patientId}` },
-            encounter: { reference: `Encounter/${encounterId}` },
-            effectiveDateTime: effectiveDate
+        // Agregar MedicationRequest por cada medicamento
+        data.medications.forEach((med, index) => {
+            entries.push(this.buildMedicationRequestEntry(med, data, index));
         });
 
-        // Peso
-        if (consultation.weight_kg) {
-            observations.push({
-                ...baseObs() as fhir.Observation,
-                id: `obs-weight-${consultation.id}`,
-                code: {
-                    coding: [{ system: 'http://loinc.org', code: '29463-7', display: 'Body weight' }]
-                },
-                valueQuantity: { value: consultation.weight_kg, unit: 'kg', system: 'http://unitsofmeasure.org', code: 'kg' }
-            });
-        }
-
-        // Talla
-        if (consultation.height_cm) {
-            observations.push({
-                ...baseObs() as fhir.Observation,
-                id: `obs-height-${consultation.id}`,
-                code: {
-                    coding: [{ system: 'http://loinc.org', code: '8302-2', display: 'Body height' }]
-                },
-                valueQuantity: { value: consultation.height_cm, unit: 'cm', system: 'http://unitsofmeasure.org', code: 'cm' }
-            });
-        }
-
-        // Temperatura
-        if (consultation.temperature_c) {
-            observations.push({
-                ...baseObs() as fhir.Observation,
-                id: `obs-temp-${consultation.id}`,
-                code: {
-                    coding: [{ system: 'http://loinc.org', code: '8310-5', display: 'Body temperature' }]
-                },
-                valueQuantity: { value: consultation.temperature_c, unit: 'Cel', system: 'http://unitsofmeasure.org', code: 'Cel' }
-            });
-        }
-
-        // Frecuencia cardíaca
-        if (consultation.heart_rate) {
-            observations.push({
-                ...baseObs() as fhir.Observation,
-                id: `obs-hr-${consultation.id}`,
-                code: {
-                    coding: [{ system: 'http://loinc.org', code: '8867-4', display: 'Heart rate' }]
-                },
-                valueQuantity: { value: consultation.heart_rate, unit: '/min', system: 'http://unitsofmeasure.org', code: '/min' }
-            });
-        }
-
-        // Saturación O2
-        if (consultation.oxygen_saturation) {
-            observations.push({
-                ...baseObs() as fhir.Observation,
-                id: `obs-spo2-${consultation.id}`,
-                code: {
-                    coding: [{ system: 'http://loinc.org', code: '59408-5', display: 'Oxygen saturation' }]
-                },
-                valueQuantity: { value: consultation.oxygen_saturation, unit: '%', system: 'http://unitsofmeasure.org', code: '%' }
-            });
-        }
-
-        // Presión arterial
-        if (consultation.blood_pressure) {
-            const [systolic, diastolic] = consultation.blood_pressure
-                .split('/')
-                .map(Number);
-
-            observations.push({
-                ...baseObs() as fhir.Observation,
-                id: `obs-bp-${consultation.id}`,
-                code: {
-                    coding: [{ system: 'http://loinc.org', code: '55284-4', display: 'Blood pressure' }]
-                },
-                component: [
-                    {
-                        code: {
-                            coding: [{ system: 'http://loinc.org', code: '8480-6', display: 'Systolic blood pressure' }]
-                        },
-                        valueQuantity: { value: systolic, unit: 'mmHg', system: 'http://unitsofmeasure.org', code: 'mm[Hg]' }
-                    },
-                    {
-                        code: {
-                            coding: [{ system: 'http://loinc.org', code: '8462-4', display: 'Diastolic blood pressure' }]
-                        },
-                        valueQuantity: { value: diastolic, unit: 'mmHg', system: 'http://unitsofmeasure.org', code: 'mm[Hg]' }
-                    }
-                ]
-            });
-        }
-
-        return observations;
-    }
-
-    // ------------------------------------------
-    // FHIR Encounter → JSON simple
-    // ------------------------------------------
-    static fromFHIR(encounter: fhir.Encounter): Partial<LocalConsultation> {
-        const STATUS_REVERSE: Record<string, LocalConsultation['status']> = {
-            planned: 'scheduled',
-            finished: 'completed',
-            cancelled: 'cancelled'
-        };
+        // Agregar ServiceRequest por cada orden de laboratorio
+        data.lab_orders.forEach((lab, index) => {
+            entries.push(this.buildServiceRequestEntry(lab, data, index));
+        });
 
         return {
-            ministry_fhir_id: encounter.id,
-            status: STATUS_REVERSE[encounter.status] || 'completed',
-            consultation_date: encounter.period?.start
-                ? new Date(encounter.period.start)
-                : new Date(),
-            next_appointment: encounter.period?.end
-                ? new Date(encounter.period.end)
-                : null,
-            reason: encounter.reasonCode?.[0]?.text || '',
-            doctor_name: encounter.participant?.[0]?.individual?.display || '',
-            doctor_license: encounter.participant?.[0]?.individual?.identifier?.value,
-            institution_name: encounter.serviceProvider?.display,
-            institution_code: encounter.serviceProvider?.identifier?.value,
-            notes: encounter.text?.div
-                ?.replace(/<[^>]*>/g, '')
-                .trim()
+            resourceType: 'Bundle',
+            id: `bundle-${data.id}`,
+            type: 'transaction',
+            timestamp,
+            entry: entries,
         };
     }
 
-    // ------------------------------------------
-    // Respuesta simple para el cliente
-    // ------------------------------------------
-    static toSimpleResponse(consultation: LocalConsultation) {
+    // ── Validar Bundle generado ───────────────────────────────────────────────
+
+    validateBundle(bundle: unknown): ValidationResult {
+        return fhirValidator.validateBundle(bundle);
+    }
+
+    // ── Patient ───────────────────────────────────────────────────────────────
+
+    private buildPatientEntry(data: ConsultationData): FHIREntry {
+        const resource: FHIRPatientResource = {
+            resourceType: 'Patient',
+            id: data.patient_id,
+            identifier: [
+                {
+                    system: SYSTEMS.PATIENT_ID,
+                    value: data.patient_id,
+                },
+            ],
+            name: [
+                {
+                    use: 'official',
+                    text: `Patient/${data.patient_id}`,
+                },
+            ],
+        };
+
         return {
-            id: consultation.id,
-            patient_id: consultation.patient_id,
-            consultation_code: consultation.consultation_code,
-            consultation_type: consultation.consultation_type,
-            specialty: consultation.specialty,
-            doctor_name: consultation.doctor_name,
-            institution_name: consultation.institution_name,
-            consultation_date: consultation.consultation_date,
-            next_appointment: consultation.next_appointment,
-            reason: consultation.reason,
-            diagnosis: consultation.diagnosis_code
-                ? {
-                    code: consultation.diagnosis_code,
-                    description: consultation.diagnosis_desc
-                }
-                : null,
-            vital_signs: {
-                weight_kg: consultation.weight_kg || null,
-                height_cm: consultation.height_cm || null,
-                temperature_c: consultation.temperature_c || null,
-                blood_pressure: consultation.blood_pressure || null,
-                heart_rate: consultation.heart_rate || null,
-                oxygen_saturation: consultation.oxygen_saturation || null
+            fullUrl: `urn:uuid:${data.patient_id}`,
+            resource,
+            request: {
+                method: 'PUT',
+                url: `Patient/${data.patient_id}`,
             },
-            status: consultation.status,
-            ministry_synced: consultation.ministry_synced,
-            prescriptions: consultation.prescriptions || [],
-            lab_orders: consultation.lab_orders || []
+        };
+    }
+
+    // ── Encounter ─────────────────────────────────────────────────────────────
+
+    private buildEncounterEntry(data: ConsultationData): FHIREntry {
+        const resource: FHIREncounterResource = {
+            resourceType: 'Encounter',
+            id: data.encounter_id,
+            status: 'finished',
+            class: {
+                system: SYSTEMS.ENCOUNTER_CLASS,
+                code: 'AMB',
+                display: 'ambulatory',
+            },
+            subject: {
+                reference: `Patient/${data.patient_id}`,
+            },
+            period: {
+                start: data.consultation_date,
+            },
+            reasonCode: [
+                {
+                    text: data.reason_for_visit,
+                },
+            ],
+            extension: [],
+        };
+
+        // Extensión MinSalud RDA: modalidad
+        if (resource.extension) {
+            resource.extension.push({
+                url: SYSTEMS.ENCOUNTER_MODALIDAD,
+                valueString: 'presencial',
+            });
+        }
+
+        // Extensión: plan de tratamiento
+        if (data.plan && resource.extension) {
+            resource.extension.push({
+                url: 'http://minsalud.gov.co/fhir/StructureDefinition/encounter-plan',
+                valueString: data.plan,
+            });
+        }
+
+        return {
+            fullUrl: `urn:uuid:${data.encounter_id}`,
+            resource,
+            request: {
+                method: 'PUT',
+                url: `Encounter/${data.encounter_id}`,
+            },
+        };
+    }
+
+    // ── Condition (diagnóstico) ───────────────────────────────────────────────
+
+    private buildConditionEntry(data: ConsultationData): FHIREntry {
+        const conditionId = `condition-${data.id}`;
+
+        const resource: FHIRConditionResource = {
+            resourceType: 'Condition',
+            id: conditionId,
+            subject: {
+                reference: `Patient/${data.patient_id}`,
+            },
+            encounter: {
+                reference: `Encounter/${data.encounter_id}`,
+            },
+            code: {
+                coding: [
+                    {
+                        system: SYSTEMS.SNOMED,
+                        display: data.assessment ?? data.chief_complaint ?? 'Sin diagnóstico',
+                    },
+                ],
+                text: data.assessment ?? data.chief_complaint,
+            },
+            recordedDate: data.consultation_date,
+        };
+
+        // Agregar nota clínica con chief_complaint
+        if (data.chief_complaint) {
+            resource.note = [{ text: data.chief_complaint }];
+        }
+
+        return {
+            fullUrl: `urn:uuid:${conditionId}`,
+            resource,
+            request: {
+                method: 'POST',
+                url: 'Condition',
+            },
+        };
+    }
+
+    // ── MedicationRequest ─────────────────────────────────────────────────────
+
+    private buildMedicationRequestEntry(
+        med: MedicationData,
+        data: ConsultationData,
+        index: number
+    ): FHIREntry {
+        const medId = `med-request-${data.id}-${index}`;
+
+        const dosageInstruction: FHIRDosageInstruction = {
+            text: `${med.dosage} - ${med.frequency}`,
+        };
+
+        // Route si está disponible
+        if (med.route) {
+            dosageInstruction.route = {
+                coding: [
+                    {
+                        system: SYSTEMS.ROUTE,
+                        display: med.route,
+                    },
+                ],
+                text: med.route,
+            };
+        }
+
+        const resource: FHIRMedicationRequestResource = {
+            resourceType: 'MedicationRequest',
+            id: medId,
+            status: 'active',
+            intent: 'order',
+            subject: {
+                reference: `Patient/${data.patient_id}`,
+            },
+            encounter: {
+                reference: `Encounter/${data.encounter_id}`,
+            },
+            medicationCodeableConcept: {
+                coding: [
+                    {
+                        system: SYSTEMS.MINSALUD_MED,
+                        code: med.medication_code,
+                        display: med.medication_display,
+                    },
+                ],
+                text: med.medication_display,
+            },
+            dosageInstruction: [dosageInstruction],
+            authoredOn: data.consultation_date,
+        };
+
+        return {
+            fullUrl: `urn:uuid:${medId}`,
+            resource,
+            request: {
+                method: 'POST',
+                url: 'MedicationRequest',
+            },
+        };
+    }
+
+    // ── ServiceRequest (laboratorio) ──────────────────────────────────────────
+
+    private buildServiceRequestEntry(
+        lab: LabOrderData,
+        data: ConsultationData,
+        index: number
+    ): FHIREntry {
+        const labId = `lab-request-${data.id}-${index}`;
+
+        const resource: FHIRServiceRequestResource = {
+            resourceType: 'ServiceRequest',
+            id: labId,
+            status: 'active',
+            intent: 'order',
+            subject: {
+                reference: `Patient/${data.patient_id}`,
+            },
+            encounter: {
+                reference: `Encounter/${data.encounter_id}`,
+            },
+            code: {
+                coding: [
+                    {
+                        system: SYSTEMS.LOINC,
+                        code: lab.code,
+                        display: lab.display,
+                    },
+                ],
+                text: lab.display,
+            },
+            occurrenceDateTime: lab.ordered_date,
+        };
+
+        return {
+            fullUrl: `urn:uuid:${labId}`,
+            resource,
+            request: {
+                method: 'POST',
+                url: 'ServiceRequest',
+            },
         };
     }
 }
+
+// ── Singleton ─────────────────────────────────────────────────────────────────
+
+export const consultationTranslator = new ConsultationTranslator();

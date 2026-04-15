@@ -1,5 +1,6 @@
+// src/clients/ministry.client.ts
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import pool from '../config/database';
+
 
 // =============================================
 // TOKEN CACHE

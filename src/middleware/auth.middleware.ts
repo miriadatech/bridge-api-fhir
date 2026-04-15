@@ -1,3 +1,4 @@
+// src/middleware/auth.middleware.ts
 import { Request, Response, NextFunction } from 'express';
 import { pool } from '../db';
 

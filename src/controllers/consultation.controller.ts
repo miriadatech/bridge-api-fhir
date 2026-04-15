@@ -1,3 +1,5 @@
+// src/controllers/consultation.controller.ts
+
 import { Request, Response } from 'express';
 import { consultationService } from '../services/consultation.service';
 import {
@@ -5,113 +7,47 @@ import {
     UpdateConsultationDTO,
     CreatePrescriptionDTO,
     CreateLabOrderDTO,
-    UpdateLabOrderResultDTO
-} from '../services/consultation.service';
+    UpdateLabOrderDTO
+} from '../types/consultation.types';
 
 export class ConsultationController {
 
-    // =============================================
+    // =========================================================================
     // POST /api/consultations
-    // =============================================
+    // =========================================================================
     async createConsultation(req: Request, res: Response): Promise<void> {
-        // 👇 AGREGA ESTAS 3 LÍNEAS
-        console.log('📨 Headers:', req.headers);
-        console.log('📦 Body raw:', req.body);
-        console.log('📦 Body tipo:', typeof req.body);
         try {
-            console.log('[ConsultationController] createConsultation:', req.body);
+            const tenantId = (req as any).tenantId as string;
+
             const {
-                patient_id,
-                consultation_type,
-                specialty,
-                doctor_name,
-                doctor_license,
-                institution_name,
-                institution_code,
-                consultation_date,
-                next_appointment,
-                reason,
-                symptoms,
-                diagnosis_code,
-                diagnosis_desc,
-                treatment_plan,
-                notes,
-                weight_kg,
-                height_cm,
-                temperature_c,
-                blood_pressure,
-                heart_rate,
-                oxygen_saturation,
-                status,
-                prescriptions,
-                lab_orders
+                patient_id, reason_for_visit, chief_complaint,
+                assessment, plan, status
             } = req.body;
 
-            // ─── Validaciones requeridas ───
             if (!patient_id) {
                 res.status(400).json({ success: false, error: 'patient_id es requerido' });
                 return;
             }
-            if (!consultation_type) {
-                res.status(400).json({ success: false, error: 'consultation_type es requerido (primera_vez | control | urgencia | domiciliaria)' });
-                return;
-            }
-            if (!specialty) {
-                res.status(400).json({ success: false, error: 'specialty es requerido' });
-                return;
-            }
-            if (!doctor_name) {
-                res.status(400).json({ success: false, error: 'doctor_name es requerido' });
-                return;
-            }
-            if (!reason) {
-                res.status(400).json({ success: false, error: 'reason (motivo de consulta) es requerido' });
+            if (!reason_for_visit) {
+                res.status(400).json({ success: false, error: 'reason_for_visit es requerido' });
                 return;
             }
 
             const dto: CreateConsultationDTO = {
-                patient_id,
-                consultation_type,
-                specialty,
-                doctor_name,
-                doctor_license,
-                institution_name,
-                institution_code,
-                consultation_date,
-                next_appointment,
-                reason,
-                symptoms,
-                diagnosis_code,
-                diagnosis_desc,
-                treatment_plan,
-                notes,
-                weight_kg,
-                height_cm,
-                temperature_c,
-                blood_pressure,
-                heart_rate,
-                oxygen_saturation,
-                status,
-                prescriptions,
-                lab_orders
+                patient_id, reason_for_visit, chief_complaint,
+                assessment, plan, status
             };
 
-            const consultation = await consultationService.create(dto);
+            const consultation = await consultationService.create(dto, tenantId);
 
             res.status(201).json({
                 success: true,
-                message: 'Consulta médica creada exitosamente',
+                message: 'Consulta creada exitosamente',
                 data: consultation
             });
 
         } catch (error: any) {
-            console.error('[ConsultationController] createConsultation:', error.message);
-
-            if (error.message?.includes('no encontrado')) {
-                res.status(404).json({ success: false, error: error.message });
-                return;
-            }
-
+            console.error('[createConsultation]', error.message);
             res.status(500).json({
                 success: false,
                 error: 'Error interno al crear la consulta',
@@ -120,89 +56,66 @@ export class ConsultationController {
         }
     }
 
-    // =============================================
+    // =========================================================================
     // GET /api/consultations/:id
-    // =============================================
+    // =========================================================================
     async getConsultation(req: Request, res: Response): Promise<void> {
         try {
+            const tenantId = (req as any).tenantId as string;
             const { id } = req.params;
 
-            const consultation = await consultationService.findById(id);
+            const consultation = await consultationService.findById(id, tenantId);
 
-            res.status(200).json({
-                success: true,
-                data: consultation
-            });
+            res.status(200).json({ success: true, data: consultation });
 
         } catch (error: any) {
-            console.error('[ConsultationController] getConsultation:', error.message);
+            console.error('[getConsultation]', error.message);
 
             if (error.message?.includes('no encontrada')) {
                 res.status(404).json({ success: false, error: error.message });
                 return;
             }
 
-            res.status(500).json({
-                success: false,
-                error: 'Error interno al obtener la consulta',
-                detail: process.env.NODE_ENV === 'development' ? error.message : undefined
-            });
+            res.status(500).json({ success: false, error: 'Error interno' });
         }
     }
 
-    // =============================================
+    // =========================================================================
     // GET /api/consultations/patient/:patientId
-    // =============================================
+    // =========================================================================
     async getPatientConsultations(req: Request, res: Response): Promise<void> {
         try {
+            const tenantId = (req as any).tenantId as string;
             const { patientId } = req.params;
+            const limit = parseInt(req.query.limit as string) || 50;
+            const offset = parseInt(req.query.offset as string) || 0;
 
-            const consultations = await consultationService.findByPatient(patientId);
+            const result = await consultationService.findByPatient(patientId, tenantId, limit, offset);
 
             res.status(200).json({
                 success: true,
-                data: consultations,
-                pagination: {
-                    total: consultations.length
-                }
+                data: result.data,
+                pagination: { total: result.total, limit, offset }
             });
 
         } catch (error: any) {
-            console.error('[ConsultationController] getPatientConsultations:', error.message);
-
-            if (error.message?.includes('no encontrado')) {
-                res.status(404).json({ success: false, error: error.message });
-                return;
-            }
-
-            res.status(500).json({
-                success: false,
-                error: 'Error interno al obtener consultas del paciente',
-                detail: process.env.NODE_ENV === 'development' ? error.message : undefined
-            });
+            console.error('[getPatientConsultations]', error.message);
+            res.status(500).json({ success: false, error: 'Error interno' });
         }
     }
 
-    // =============================================
+    // =========================================================================
     // PUT /api/consultations/:id
-    // =============================================
+    // =========================================================================
     async updateConsultation(req: Request, res: Response): Promise<void> {
         try {
+            const tenantId = (req as any).tenantId as string;
             const { id } = req.params;
-            const body = { ...req.body };
 
-            // ─── Proteger campos inmutables ───
-            delete body.id;
-            delete body.patient_id;
-            delete body.created_at;
+            const { assessment, plan, status } = req.body;
+            const dto: UpdateConsultationDTO = { assessment, plan, status };
 
-            if (Object.keys(body).length === 0) {
-                res.status(400).json({ success: false, error: 'No se enviaron campos para actualizar' });
-                return;
-            }
-
-            const dto: UpdateConsultationDTO = body;
-            const updated = await consultationService.update(id, dto);
+            const updated = await consultationService.update(id, dto, tenantId);
 
             res.status(200).json({
                 success: true,
@@ -211,75 +124,60 @@ export class ConsultationController {
             });
 
         } catch (error: any) {
-            console.error('[ConsultationController] updateConsultation:', error.message);
+            console.error('[updateConsultation]', error.message);
 
             if (error.message?.includes('no encontrada')) {
                 res.status(404).json({ success: false, error: error.message });
                 return;
             }
-
             if (error.message?.includes('No hay campos')) {
                 res.status(400).json({ success: false, error: error.message });
                 return;
             }
 
-            res.status(500).json({
-                success: false,
-                error: 'Error interno al actualizar la consulta',
-                detail: process.env.NODE_ENV === 'development' ? error.message : undefined
-            });
+            res.status(500).json({ success: false, error: 'Error interno' });
         }
     }
 
-    // =============================================
+    // =========================================================================
     // DELETE /api/consultations/:id
-    // =============================================
+    // =========================================================================
     async deleteConsultation(req: Request, res: Response): Promise<void> {
         try {
+            const tenantId = (req as any).tenantId as string;
             const { id } = req.params;
 
-            await consultationService.delete(id);
+            await consultationService.delete(id, tenantId);
 
-            res.status(200).json({
-                success: true,
-                message: 'Consulta eliminada exitosamente'
-            });
+            res.status(200).json({ success: true, message: 'Consulta eliminada exitosamente' });
 
         } catch (error: any) {
-            console.error('[ConsultationController] deleteConsultation:', error.message);
+            console.error('[deleteConsultation]', error.message);
 
             if (error.message?.includes('no encontrada')) {
                 res.status(404).json({ success: false, error: error.message });
                 return;
             }
 
-            res.status(500).json({
-                success: false,
-                error: 'Error interno al eliminar la consulta',
-                detail: process.env.NODE_ENV === 'development' ? error.message : undefined
-            });
+            res.status(500).json({ success: false, error: 'Error interno' });
         }
     }
 
-    // =============================================
+    // =========================================================================
     // POST /api/consultations/:id/prescriptions
-    // =============================================
+    // =========================================================================
     async addPrescription(req: Request, res: Response): Promise<void> {
         try {
+            const tenantId = (req as any).tenantId as string;
             const { id } = req.params;
+
             const {
-                medication_name,
-                medication_code,
-                dosage,
-                frequency,
-                duration,
-                route,
-                instructions
+                medication_display, medication_code,
+                dosage, frequency, route, duration_days, instructions
             } = req.body;
 
-            // ─── Validaciones ───
-            if (!medication_name) {
-                res.status(400).json({ success: false, error: 'medication_name es requerido' });
+            if (!medication_display) {
+                res.status(400).json({ success: false, error: 'medication_display es requerido' });
                 return;
             }
             if (!dosage) {
@@ -292,135 +190,107 @@ export class ConsultationController {
             }
 
             const dto: CreatePrescriptionDTO = {
-                medication_name,
-                medication_code,
-                dosage,
-                frequency,
-                duration,
-                route,
-                instructions
+                consultation_id: id,
+                medication_display, medication_code,
+                dosage, frequency, route, duration_days, instructions
             };
 
-            const prescription = await consultationService.addPrescription(id, dto);
+            const prescription = await consultationService.addPrescription(id, dto, tenantId);
 
             res.status(201).json({
                 success: true,
-                message: 'Medicamento agregado exitosamente',
+                message: 'Prescripción agregada exitosamente',
                 data: prescription
             });
 
         } catch (error: any) {
-            console.error('[ConsultationController] addPrescription:', error.message);
+            console.error('[addPrescription]', error.message);
 
             if (error.message?.includes('no encontrada')) {
                 res.status(404).json({ success: false, error: error.message });
                 return;
             }
 
-            res.status(500).json({
-                success: false,
-                error: 'Error interno al agregar medicamento',
-                detail: process.env.NODE_ENV === 'development' ? error.message : undefined
-            });
+            res.status(500).json({ success: false, error: 'Error interno' });
         }
     }
 
-    // =============================================
+    // =========================================================================
     // POST /api/consultations/:id/lab-orders
-    // =============================================
+    // =========================================================================
     async addLabOrder(req: Request, res: Response): Promise<void> {
         try {
+            const tenantId = (req as any).tenantId as string;
             const { id } = req.params;
-            const {
-                exam_name,
-                exam_code,
-                exam_type,
-                priority,
-                instructions
-            } = req.body;
 
-            // ─── Validaciones ───
-            if (!exam_name) {
-                res.status(400).json({ success: false, error: 'exam_name es requerido' });
+            const { code, display, specimen_type } = req.body;
+
+            if (!code) {
+                res.status(400).json({ success: false, error: 'code (CUPS) es requerido' });
                 return;
             }
-            if (!exam_code) {
-                res.status(400).json({ success: false, error: 'exam_code (código CUPS) es requerido' });
+            if (!display) {
+                res.status(400).json({ success: false, error: 'display es requerido' });
                 return;
             }
 
             const dto: CreateLabOrderDTO = {
-                exam_name,
-                exam_code,
-                exam_type,
-                priority,
-                instructions
+                consultation_id: id,
+                code, display, specimen_type
             };
 
-            const labOrder = await consultationService.addLabOrder(id, dto);
+            const labOrder = await consultationService.addLabOrder(id, dto, tenantId);
 
             res.status(201).json({
                 success: true,
-                message: 'Orden de examen agregada exitosamente',
+                message: 'Orden de laboratorio agregada exitosamente',
                 data: labOrder
             });
 
         } catch (error: any) {
-            console.error('[ConsultationController] addLabOrder:', error.message);
+            console.error('[addLabOrder]', error.message);
 
             if (error.message?.includes('no encontrada')) {
                 res.status(404).json({ success: false, error: error.message });
                 return;
             }
 
-            res.status(500).json({
-                success: false,
-                error: 'Error interno al agregar orden de examen',
-                detail: process.env.NODE_ENV === 'development' ? error.message : undefined
-            });
+            res.status(500).json({ success: false, error: 'Error interno' });
         }
     }
 
-    // =============================================
+    // =========================================================================
     // PATCH /api/consultations/:id/lab-orders/:labOrderId/result
-    // =============================================
+    // =========================================================================
     async updateLabOrderResult(req: Request, res: Response): Promise<void> {
         try {
+            const tenantId = (req as any).tenantId as string;
             const { labOrderId } = req.params;
             const { result, result_date, status } = req.body;
 
-            // ─── Validaciones ───
             if (!result) {
                 res.status(400).json({ success: false, error: 'result es requerido' });
                 return;
             }
-            if (!status || !['completed', 'cancelled'].includes(status)) {
-                res.status(400).json({ success: false, error: 'status debe ser completed o cancelled' });
-                return;
-            }
 
-            const dto: UpdateLabOrderResultDTO = { result, result_date, status };
-            const updated = await consultationService.updateLabOrderResult(labOrderId, dto);
+            const dto: UpdateLabOrderDTO = { result, result_date, status };
+            const updated = await consultationService.updateLabOrderResult(labOrderId, dto, tenantId);
 
             res.status(200).json({
                 success: true,
-                message: 'Resultado de examen actualizado',
+                message: 'Resultado actualizado exitosamente',
                 data: updated
             });
 
         } catch (error: any) {
-            console.error('[ConsultationController] updateLabOrderResult:', error.message);
+            console.error('[updateLabOrderResult]', error.message);
 
-            if (error.message?.includes('no encontrado')) {
+            if (error.message?.includes('no encontrada')) {
                 res.status(404).json({ success: false, error: error.message });
                 return;
             }
 
-            res.status(500).json({
-                success: false,
-                error: 'Error interno al actualizar resultado de examen',
-                detail: process.env.NODE_ENV === 'development' ? error.message : undefined
-            });
+            res.status(500).json({ success: false, error: 'Error interno' });
         }
     }
 }

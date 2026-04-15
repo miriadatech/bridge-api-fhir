@@ -1,4 +1,5 @@
-﻿const { Pool } = require('pg');
+﻿// src/config/database.ts
+const { Pool } = require('pg');
 
 const pool = new Pool({
 

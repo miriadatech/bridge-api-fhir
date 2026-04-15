@@ -1,3 +1,4 @@
+// src/modules/auth/auth.controller.ts
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { TenantRequest } from '../../middleware/auth.middleware';
@@ -6,7 +7,7 @@ const authService = new AuthService();
 
 export class AuthController {
 
-    // POST /auth/register
+    // POST /api/auth/register (PÚBLICO)
     async register(req: Request, res: Response): Promise<void> {
         try {
             const { name, email, phone, nit, institution_type, institution_code, plan } = req.body;
@@ -29,7 +30,6 @@ export class AuthController {
                 message: 'Tenant registrado exitosamente',
                 data: {
                     ...tenant,
-                    // Mensaje importante al registrar
                     warning: '⚠️ Guarda tu API Key de forma segura. No se mostrará nuevamente.'
                 }
             });
@@ -47,7 +47,7 @@ export class AuthController {
         }
     }
 
-    // POST /auth/regenerate-key  (requiere x-api-key)
+    // POST /api/auth/regenerate-key (PROTEGIDO: requiere x-api-key)
     async regenerateKey(req: Request, res: Response): Promise<void> {
         try {
             const tenant = (req as TenantRequest).tenant;
@@ -68,7 +68,7 @@ export class AuthController {
         }
     }
 
-    // PUT /auth/ministry-credentials  (requiere x-api-key)
+    // PUT /api/auth/ministry-credentials (PROTEGIDO: requiere x-api-key)
     async saveMinistryCredentials(req: Request, res: Response): Promise<void> {
         try {
             const tenant = (req as TenantRequest).tenant;
@@ -107,7 +107,7 @@ export class AuthController {
         }
     }
 
-    // GET /auth/profile  (requiere x-api-key)
+    // GET /api/auth/profile (PROTEGIDO: requiere x-api-key)
     async getProfile(req: Request, res: Response): Promise<void> {
         try {
             const tenant = (req as TenantRequest).tenant;

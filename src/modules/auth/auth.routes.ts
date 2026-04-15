@@ -1,16 +1,27 @@
-import { Router } from 'express';
+// src/routes/auth.routes.ts
+import { Router, Request, Response } from 'express';
 import { AuthController } from './auth.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 
 const router = Router();
-const ctrl = new AuthController();
+const authController = new AuthController();
 
-// Rutas PÚBLICAS (sin API Key)
-router.post('/register', ctrl.register.bind(ctrl));
+// 🟢 RUTAS PÚBLICAS
+router.post('/register', (req: Request, res: Response) =>
+    authController.register(req, res)
+);
 
-// Rutas PROTEGIDAS (requieren x-api-key)
-router.post('/regenerate-key', authMiddleware, ctrl.regenerateKey.bind(ctrl));
-router.put('/ministry-credentials', authMiddleware, ctrl.saveMinistryCredentials.bind(ctrl));
-router.get('/profile', authMiddleware, ctrl.getProfile.bind(ctrl));
+// 🔴 RUTAS PROTEGIDAS (requieren x-api-key)
+router.post('/regenerate-key', authMiddleware, (req: Request, res: Response) =>
+    authController.regenerateKey(req, res)
+);
+
+router.put('/ministry-credentials', authMiddleware, (req: Request, res: Response) =>
+    authController.saveMinistryCredentials(req, res)
+);
+
+router.get('/profile', authMiddleware, (req: Request, res: Response) =>
+    authController.getProfile(req, res)
+);
 
 export default router;
