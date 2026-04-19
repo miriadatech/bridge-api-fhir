@@ -1,3 +1,4 @@
+// src/app.ts
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -5,6 +6,8 @@ import patientRoutes from './routes/patient.routes';
 import consultationRoutes from './routes/consultation.routes';
 import authRoutes from './modules/auth/auth.routes';
 import { authMiddleware } from './middleware/auth.middleware';
+import rdaRoutes from './routes/rda.routes';
+import familyHistoryRoutes from './routes/family-history.routes';
 
 const app = express();
 
@@ -36,6 +39,8 @@ app.use('/api/auth', authRoutes);  // ✅ Login, Register
 // ============================================
 app.use('/api/ehr/patients', authMiddleware, patientRoutes);
 app.use('/api/ehr/consultations', authMiddleware, consultationRoutes);
+app.use('/api/ehr/rda', authMiddleware, rdaRoutes);
+app.use('/api/ehr/patients/:patientId/family-history', authMiddleware, familyHistoryRoutes);
 
 // ============================================
 // Error handler global

@@ -1,103 +1,80 @@
-// src/types/consultation.types.ts
-
-// ─── Modelos de DB ────────────────────────────────────────────────────────────
-
-export interface LocalConsultation {
-    id: string;
-    patient_id: string;
-    encounter_id: string;
-    consultation_date: string;
-    reason_for_visit: string;
-    chief_complaint?: string;
-    assessment?: string;
-    plan?: string;
-    status: 'pending' | 'completed' | 'cancelled';
-    created_at: string;
-    updated_at: string;
-    tenant_id: string;
-}
-
-export interface LocalPrescription {
-    id: string;
-    consultation_id: string;
-    medication_code?: string;
-    medication_display: string;
-    dosage: string;
-    frequency: string;
-    route?: string;
-    duration_days?: number;
-    instructions?: string;
-    status: 'active' | 'inactive' | 'completed';
-    created_at: string;
-    updated_at: string;
-    tenant_id: string;
-}
-
-export interface LocalLabOrder {
-    id: string;
-    consultation_id: string;
-    code: string;
-    display: string;
-    ordered_date: string;
-    specimen_type?: string;
-    status: 'ordered' | 'pending' | 'completed' | 'cancelled';
-    result?: string;
-    result_date?: string;
-    created_at: string;
-    updated_at: string;
-    tenant_id: string;
-}
-
-// ─── DTOs ─────────────────────────────────────────────────────────────────────
-
 export interface CreateConsultationDTO {
     patient_id: string;
-    reason_for_visit: string;
+    consultation_type: string;
+    specialty: string;
+    doctor_name: string;
+    doctor_id?: string;
+    doctor_license?: string;
+    institution_name?: string;
+    institution_code?: string;
+    consultation_date?: string;
+    next_appointment?: string;
+    reason: string;
+    symptoms?: string;
+    diagnosis_code?: string;
+    diagnosis_desc?: string;
+    treatment_plan?: string;
+    notes?: string;
+    follow_up_date?: string;
+    reason_for_visit?: string;
     chief_complaint?: string;
     assessment?: string;
     plan?: string;
-    status?: 'pending' | 'completed' | 'cancelled';
+    vital_signs?: {
+        blood_pressure?: string;
+        heart_rate?: number;
+        temperature_c?: number;    // ← corregido
+        weight_kg?: number;        // ← corregido
+        height_cm?: number;        // ← corregido
+        oxygen_saturation?: number;
+    };
+    prescriptions?: CreatePrescriptionDTO[];
+    lab_orders?: CreateLabOrderDTO[];
 }
 
 export interface UpdateConsultationDTO {
+    reason?: string;
+    symptoms?: string;
+    diagnosis_code?: string;
+    diagnosis_desc?: string;
+    treatment_plan?: string;
+    notes?: string;
+    follow_up_date?: string;
+    status?: string;
+    reason_for_visit?: string;
+    chief_complaint?: string;
     assessment?: string;
     plan?: string;
-    status?: 'pending' | 'completed' | 'cancelled';
+    vital_signs?: {
+        blood_pressure?: string;
+        heart_rate?: number;
+        temperature_c?: number;    // ← corregido
+        weight_kg?: number;        // ← corregido
+        height_cm?: number;        // ← corregido
+        oxygen_saturation?: number;
+    };
 }
 
 export interface CreatePrescriptionDTO {
-    consultation_id: string;
+    medication_name: string;
     medication_code?: string;
-    medication_display: string;
     dosage: string;
     frequency: string;
+    duration?: string;
     route?: string;
-    duration_days?: number;
     instructions?: string;
-}
-
-export interface UpdatePrescriptionDTO {
-    dosage?: string;
-    frequency?: string;
-    route?: string;
-    duration_days?: number;
-    instructions?: string;
-    status?: 'active' | 'inactive' | 'completed';
 }
 
 export interface CreateLabOrderDTO {
-    consultation_id: string;
-    code: string;
-    display: string;
-    specimen_type?: string;
+    exam_name: string;
+    exam_code?: string;
+    exam_type?: string;
+    priority?: string;
+    instructions?: string;
 }
 
 export interface UpdateLabOrderDTO {
-    status?: 'ordered' | 'pending' | 'completed' | 'cancelled';
     result?: string;
     result_date?: string;
-}
-
-export interface SyncPayload {
-    mode: 'sandbox' | 'strict';
+    status?: string;
 }

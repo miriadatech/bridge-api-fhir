@@ -1,3 +1,4 @@
+// src/controllers/patient.controller.ts
 import { Request, Response } from 'express';
 import { PatientService } from '../services/patient.service';
 
