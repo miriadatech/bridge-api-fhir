@@ -23,7 +23,7 @@ export class RDAController {
                 return;
             }
             if (!tenantId) {
-                res.status(401).json({ error: 'Tenant no autenticado' });
+                res.status(401).json({ error: 'Usuario no autenticado' });
                 return;
             }
 
@@ -92,8 +92,10 @@ export class RDAController {
     translateDirect = async (req: Request, res: Response): Promise<void> => {
         try {
             const input = req.body as RDAPatientStatementInput;
+            console.log("input", input.patient);
 
             // Validaciones mínimas
+            console.log(input.patient.identifier_value)
             if (!input?.patient?.identifier_value) {
                 res.status(400).json({
                     error: 'Campo requerido: patient.identifier_value',
@@ -127,6 +129,7 @@ export class RDAController {
 
             // Método ESTÁTICO — correcto
             const bundle = RDAPatientStatementTranslator.translate(input);
+            console.log("bundle", JSON.stringify(bundle, null, 2));
 
             res.status(200).json(bundle);
 

@@ -20,7 +20,7 @@ class ConsultationController {
             const tenantId = (req as any).tenant?.id as string;
             console.log(tenantId)
             if (!tenantId) {
-                res.status(401).json({ success: false, error: 'Tenant no autenticado' });
+                res.status(401).json({ success: false, error: 'Usuario no autenticado' });
                 return;
             }
 
