@@ -10,7 +10,7 @@ export const config = {
     port: parseInt(process.env.DB_PORT || '5432', 10),
     user: process.env.DB_USER || 'bridge_user',
     password: process.env.DB_PASSWORD || 'secure_password_123',
-    database: process.env.DB_NAME || 'bridge_fhir_db',
+    database: process.env.DB_NAME || 'SSH7Fhire',
     poolMin: parseInt(process.env.DB_POOL_MIN || '2', 10),
     poolMax: parseInt(process.env.DB_POOL_MAX || '10', 10),
   },

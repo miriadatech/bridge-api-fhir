@@ -5,7 +5,7 @@ const pool = new Pool({
   host: process.env.DB_HOST ?? 'localhost',
   user: process.env.DB_USER ?? 'emrodino',
   password: process.env.DB_PASSWORD ?? 'Isys##2021',
-  database: process.env.DB_NAME ?? 'SSOperabilidad',
+  database: process.env.DB_NAME ?? 'SSH7Fhire',
   port: parseInt(process.env.DB_PORT ?? '5432'),
   // Pool sizing para producción
   max: 20,

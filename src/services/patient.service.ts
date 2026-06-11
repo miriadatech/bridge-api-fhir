@@ -8,6 +8,106 @@ const ministryClient = new MinistryClient();
 export class PatientService {
 
     // ─── CREAR PACIENTE ───────────────────────────────────────────────
+    /* async createPatient(data: any) {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            // 1. Verificar duplicado por documento
+            const duplicate = await client.query(
+                `SELECT id FROM patients 
+         WHERE identifier_type = $1 
+         AND identifier_value = $2 
+         AND deleted_at IS NULL`,
+                [data.identifier_type, data.identifier_value]
+            );
+
+            if (duplicate.rows.length > 0) {
+                throw {
+                    status: 409,
+                    message: `Ya existe un paciente con ${data.identifier_type}: ${data.identifier_value}`
+                };
+            }
+
+            // 2. Sincronizar con Ministerio
+            let ministry_fhir_id: string | null = null;
+            let ministry_synced = false;
+            const mode = process.env.MINISTRY_MODE || 'sandbox';
+
+            try {
+                const fhirResource = PatientTranslator.toFHIR(data);
+                const ministryResponse = await ministryClient.createPatient(fhirResource);
+                ministry_fhir_id = ministryResponse?.id || null;
+                ministry_synced = true;
+            } catch (ministryError: any) {
+                if (mode === 'strict') {
+                    throw {
+                        status: 502,
+                        message: 'Error sincronizando con el Ministerio de Salud',
+                        detail: ministryError.message
+                    };
+                }
+                // En sandbox: continúa sin sincronización
+                console.warn('Ministry sync failed (sandbox mode):', ministryError.message);
+            }
+
+            // 3. Insertar en BD
+            const id = uuidv4();
+            const result = await client.query(
+                `INSERT INTO patients (
+          id, family_name, given_name, middle_name,
+          identifier_type, identifier_value,
+          birth_date, gender, contact_phone, contact_email, address_line,
+          address_country, address_state, address_city,
+          marital_status, blood_type, rh_type,
+          ethnicity, disability_status,
+          emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
+          ministry_fhir_id, ministry_synced,
+          created_at, updated_at
+        ) VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,
+          $15,$16,$17,$18,$19,$20,$21,$22,$23,$24,
+          NOW(), NOW()
+        ) RETURNING *`,
+                [
+                    id,
+                    data.family_name,
+                    data.given_name,
+                    data.middle_name || null,
+                    data.identifier_type,
+                    data.identifier_value,
+                    data.birth_date || null,
+                    data.gender || null,
+                    data.phone || null,
+                    data.email || null,
+                    data.address || null,
+                    data.city || null,
+                    data.department || null,
+                    data.country || 'Colombia',
+                    data.marital_status || null,
+                    data.blood_type || null,
+                    data.rh_type || null,
+                    data.ethnicity || null,
+                    data.disability_status || false,
+                    data.emergency_contact_name || null,
+                    data.emergency_contact_phone || null,
+                    data.emergency_contact_relationship || null,
+                    ministry_fhir_id,
+                    ministry_synced
+                ]
+            );
+
+            await client.query('COMMIT');
+            return PatientTranslator.toSimpleResponse(result.rows[0]);
+
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    } */
+
     async createPatient(data: any) {
         const client = await pool.connect();
         try {

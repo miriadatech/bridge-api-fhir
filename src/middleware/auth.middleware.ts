@@ -38,14 +38,14 @@ export async function authMiddleware(
         // 2. Buscar tenant por api_key
         const result = await pool.query(
             `SELECT
-         id, name, plan,
+         id, nombre as name, plan,
          ministry_mode,
          ministry_client_id,
          ministry_client_secret,
          ministry_auth_url,
          ministry_scope,
          is_active
-       FROM tenants
+       FROM clientes
        WHERE api_key = $1
        LIMIT 1`,
             [apiKey]

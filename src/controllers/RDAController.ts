@@ -7,6 +7,8 @@ import {
     RDAPatientStatementTranslator,
     RDAPatientStatementInput,
 } from '../translators/RDAPatientStatementTranslator';
+import { tenant_local } from '../types/types';
+import saveRdaService from '../services/saveRDA.service';
 
 const rdaService = new RDAService();
 
@@ -92,6 +94,8 @@ export class RDAController {
     translateDirect = async (req: Request, res: Response): Promise<void> => {
         try {
             const input = req.body as RDAPatientStatementInput;
+            const tenant = req.body.tenant as tenant_local | undefined;
+            console.log("tenant", tenant);
             console.log("input", input.patient);
 
             // Validaciones mínimas
@@ -129,7 +133,10 @@ export class RDAController {
 
             // Método ESTÁTICO — correcto
             const bundle = RDAPatientStatementTranslator.translate(input);
-            console.log("bundle", JSON.stringify(bundle, null, 2));
+
+            await saveRdaService.saveRdaRecibidas(input, tenant, bundle);
+
+            /* Se debe enviar a grabar el RDA para que quede pendiente para enviar al ministerio mediante un Worker */
 
             res.status(200).json(bundle);
 
