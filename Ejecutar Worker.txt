@@ -1,0 +1,15 @@
+Desarrollo
+cd c:\laragon\www\bridge-api-fhir-master
+npm run worker:dev
+
+
+Producción
+# 1. Compilar
+npm run build
+
+# 2. Ejecutar el worker compilado
+npm run worker:start
+
+
+pm2 start dist/workers/ministerioSender.worker.js --name "fhir-worker"
+pm2 save

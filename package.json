@@ -5,6 +5,8 @@
   "main": "dist/app.js",
   "scripts": {
     "dev": "ts-node src/server.ts",
+    "worker:dev": "ts-node src/workers/ministerioSender.worker.ts",
+    "worker:start": "node dist/workers/ministerioSender.worker.js",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "jest",
