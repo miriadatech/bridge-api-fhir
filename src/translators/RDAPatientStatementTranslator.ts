@@ -533,6 +533,31 @@ function buildPractitionerResource(
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Valida cada sección con la regla FHIR: text.exists() or entry.exists() or section.exists()
+ * Si la regla no se cumple: Genera automáticamente text y emptyReason.
+ */
+function validateAndFixSection(section: any): any {
+    const hasText = !!section.text;
+    const hasEntry = Array.isArray(section.entry) && section.entry.length > 0;
+    const hasSection = Array.isArray(section.section) && section.section.length > 0;
+
+    if (!hasText && !hasEntry && !hasSection) {
+        section.emptyReason = {
+            coding: [{
+                system: CS.LIST_EMPTY_REASON,
+                code: 'nilknown',
+                display: 'Nil Known',
+            }],
+        };
+        section.text = {
+            status: 'generated',
+            div: 'No existen elementos conocidos para esta lista y/o el paciente no declara información',
+        };
+    }
+    return section;
+}
+
 function buildSection(
     title: string,
     loincCode: string,
@@ -563,6 +588,10 @@ function buildSection(
                 code: 'nilknown',
                 display: 'Nil Known',
             }],
+        },
+        text: {
+            status: 'generated',
+            div: "<div xmlns='http://www.w3.org/1999/xhtml'>No existen elementos conocidos para esta lista y/o el paciente no declara información</div>",
         },
     };
 }
@@ -618,18 +647,19 @@ function buildCompositionResource(opts: {
             code: [
                 {
                     coding: [{
-                        system: CS.COL_TECH_MODALITY,
-                        code: techCode,
-                        display: techDisplay,
+                        system: CS.COL_SERVICE_GROUP,
+                        code: svcCode?.trim() ? svcCode : '01',
+                        display: techDisplay?.trim() ? techDisplay : 'Consulta externa'
                     }],
                 },
                 {
                     coding: [{
-                        system: CS.COL_SERVICE_GROUP,
-                        code: svcCode,
-                        display: svcDisplay,
+                        system: CS.COL_TECH_MODALITY,
+                        code: techCode?.trim() ? techCode : '01',
+                        display: svcDisplay?.trim() ? svcDisplay : 'Intramural'
                     }],
                 },
+
             ],
             period: {
                 start: toDateString(opts.eventStart ?? new Date()),
@@ -661,7 +691,7 @@ function buildCompositionResource(opts: {
                 'History of family member diseases Narrative',
                 opts.sectionEntries.familyHistory,
             ),
-        ],
+        ].map(validateAndFixSection),
     };
 }
 
@@ -751,7 +781,7 @@ function buildFamilyHistoryResource(fh: RDAFamilyHistoryRow, pRef: string): obje
         resourceType: 'FamilyMemberHistory',
         id: `FamilyMemberHistory-${fh.id}`,
         meta: { profile: [PROFILES.FAMILY_HISTORY] },
-        status: fh.status ?? 'partial',
+        status: 'partial',
         patient: { reference: pRef },
         relationship: {
             coding: [{
