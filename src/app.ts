@@ -7,6 +7,7 @@ import consultationRoutes from './routes/consultation.routes';
 import authRoutes from './modules/auth/auth.routes';
 import { authMiddleware } from './middleware/auth.middleware';
 import rdaRoutes from './routes/rda.routes';
+import rdaAmbulatoryRoutes from './routes/rdaAmbulatory.routes';
 import familyHistoryRoutes from './routes/family-history.routes';
 
 const app = express();
@@ -40,6 +41,7 @@ app.use('/api/auth', authRoutes);  // ✅ Login, Register
 app.use('/api/ehr/patients', authMiddleware, patientRoutes);
 app.use('/api/ehr/consultations', authMiddleware, consultationRoutes);
 app.use('/api/ehr/rda', authMiddleware, rdaRoutes);
+app.use('/api/ehr/rda/ambulatory', authMiddleware, rdaAmbulatoryRoutes);
 app.use('/api/ehr/patients/:patientId/family-history', authMiddleware, familyHistoryRoutes);
 
 // ============================================
