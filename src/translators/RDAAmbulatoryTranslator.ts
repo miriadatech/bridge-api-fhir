@@ -50,8 +50,10 @@ export interface RDAAmbulatoryTenant {
 export interface RDAAmbulatoryPractitioner {
     /** Nombre completo del médico (se descompone automáticamente) */
     doctor_name: string;
-    /** CC del médico */
+    /** Número de documento del médico */
     doctor_license: string;
+    /** Tipo de documento del médico (por defecto CC) */
+    doctor_identifier_type?: string;
 }
 
 export interface RDAAmbulatoryEncounter {
@@ -127,8 +129,10 @@ export interface RDAAmbulatoryRiskFactor {
 
 export interface RDAAmbulatoryMedicationRequest {
     id: string;
-    /** Código IUM primer nivel */
+    /** Código del medicamento (IUM primer nivel por defecto, o MipresINN) */
     medication_code?: string;
+    /** Sistema del código: "IUMPrimerNivel" (por defecto) | "MipresINN" */
+    medication_system?: 'IUMPrimerNivel' | 'MipresINN';
     medication_display: string;
     /** Código categoría ColombianHealthTechnologyCategory: "02" Medicamento con registro sanitario */
     category_code?: string;
@@ -320,6 +324,7 @@ const CS = {
     ENTORNO_ATENCION:     `${BASE}/CodeSystem/EntornoAtencion`,
     FACTOR_RIESGO:        `${BASE}/CodeSystem/FactorRiesgo`,
     IUM_PRIMER_NIVEL:     `${BASE}/CodeSystem/IUMPrimerNivel`,
+    MIPRES_INN:           `${BASE}/CodeSystem/MipresINN`,
     MIPRES_INSTRUCTION:   `${BASE}/CodeSystem/MipresSpecialInstruction`,
     MEDICATION_TIME:      `${BASE}/CodeSystem/MedicationTime`,
     VAD:                  `${BASE}/CodeSystem/VAD`,
@@ -603,7 +608,7 @@ function buildPractitionerResource(pr: RDAAmbulatoryPractitioner): object {
 
     return {
         resourceType: 'Practitioner',
-        id: `CC-${pr.doctor_license}`,
+        id: `${(pr.doctor_identifier_type ?? 'CC').toUpperCase()}-${pr.doctor_license}`,
         meta: { profile: [PROFILES.PRACTITIONER] },
         identifier: [{
             id: 'NationalPersonIdentifier-0',
@@ -611,7 +616,12 @@ function buildPractitionerResource(pr: RDAAmbulatoryPractitioner): object {
             type: {
                 coding: [
                     { system: CS.V2_0203, code: 'PN', display: 'Person number' },
-                    { system: CS.COL_PERSON_ID, code: 'CC', display: 'Cédula ciudadanía' },
+                    {
+                        system: CS.COL_PERSON_ID,
+                        code: (pr.doctor_identifier_type ?? 'CC').toUpperCase(),
+                        display: (pr.doctor_identifier_type ?? 'CC').toUpperCase() === 'CC'
+                            ? 'Cédula ciudadanía' : (pr.doctor_identifier_type as string).toUpperCase(),
+                    },
                 ],
             },
             value: pr.doctor_license,
@@ -684,38 +694,38 @@ function buildEncounterResource(
     const encounterTypes: object[] = [];
     if (enc.tech_modality_code) {
         encounterTypes.push({
-            coding: {
+            coding: [{
                 system: CS.COL_TECH_MODALITY,
                 code: enc.tech_modality_code,
                 display: enc.tech_modality_display ?? enc.tech_modality_code,
-            },
+            }],
         });
     }
     if (enc.service_group_code) {
         encounterTypes.push({
-            coding: {
+            coding: [{
                 system: CS.COL_SERVICE_GROUP,
                 code: enc.service_group_code,
                 display: enc.service_group_display ?? enc.service_group_code,
-            },
+            }],
         });
     }
     if (enc.reps_service_code) {
         encounterTypes.push({
-            coding: {
+            coding: [{
                 system: CS.REPS_SERVICES,
                 code: enc.reps_service_code,
                 display: enc.reps_service_display ?? enc.reps_service_code,
-            },
+            }],
         });
     }
     if (enc.care_setting_code) {
         encounterTypes.push({
-            coding: {
+            coding: [{
                 system: CS.ENTORNO_ATENCION,
                 code: enc.care_setting_code,
                 display: enc.care_setting_display ?? enc.care_setting_code,
-            },
+            }],
         });
     }
 
@@ -738,11 +748,11 @@ function buildEncounterResource(
         ...(encounterTypes.length > 0 && { type: encounterTypes }),
         ...(enc.cups_service_code && {
             serviceType: {
-                coding: {
+                coding: [{
                     system: CS.CUPS,
                     code: enc.cups_service_code,
                     display: enc.cups_service_display ?? enc.cups_service_code,
-                },
+                }],
             },
         }),
         subject: { reference: patientRef },
@@ -979,13 +989,16 @@ function buildMedicationRequestResource(
             }],
         }],
         reportedBoolean: true,
-        medicationCodeableConcept: {
-            coding: [{
-                system: CS.IUM_PRIMER_NIVEL,
-                code: m.medication_code ?? '0',
-                display: m.medication_display.toUpperCase(),
-            }],
-        },
+        // Sin código → solo texto (el código '0' es rechazado por el Ministerio)
+        medicationCodeableConcept: m.medication_code
+            ? {
+                coding: [{
+                    system: m.medication_system === 'MipresINN' ? CS.MIPRES_INN : CS.IUM_PRIMER_NIVEL,
+                    code: m.medication_code,
+                    display: m.medication_display,
+                }],
+            }
+            : { text: m.medication_display },
         subject: { reference: pRef },
         encounter: { reference: encounterRef },
         authoredOn: m.authored_on ?? nowISO(),
@@ -1160,9 +1173,12 @@ function buildObservationOcupacionResource(
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildPaymentSourceResource(ps: RDAAmbulatoryPaymentSource): object {
+    // EAPB: id = código EAPB (ej. EPS037), referenciado como #EPS037
     return {
         resourceType: 'Organization',
         id: ps.id,
+        meta: { profile: [`${BASE}/StructureDefinition/HealthBenefitPlanAdminOrganizationRDA`] },
+        identifier: [{ use: 'official', value: ps.id }],
         name: ps.name,
     };
 }
@@ -1194,7 +1210,7 @@ function buildDocumentReferenceResource(
         subject: { reference: pRef },
         date: doc.date ?? nowISO(),
         author: [{ reference: orgRef }],
-        custodian: { reference: 'Organization/MinSalud' },
+        custodian: { reference: orgRef },
         description: doc.description ?? 'Documento de soporte RDA',
         securityLabel: [{
             coding: [{
@@ -1218,6 +1234,10 @@ function buildCompositionResource(opts: {
     eventEnd?: string;
     attesterRef: string;
     sections: object[];
+    serviceGroupCode?: string;
+    serviceGroupDisplay?: string;
+    techModalityCode?: string;
+    techModalityDisplay?: string;
 }): object {
     return {
         resourceType: 'Composition',
@@ -1241,12 +1261,29 @@ function buildCompositionResource(opts: {
             party: { reference: opts.attesterRef },
         }],
         custodian: { reference: opts.orgRef },
-        event: {
+        // Composition.event es 0..* (array). event.code lleva grupo de servicio + modalidad.
+        event: [{
+            code: [
+                {
+                    coding: [{
+                        system: CS.COL_SERVICE_GROUP,
+                        code: opts.serviceGroupCode ?? '01',
+                        display: opts.serviceGroupDisplay ?? 'Consulta externa',
+                    }],
+                },
+                {
+                    coding: [{
+                        system: CS.COL_TECH_MODALITY,
+                        code: opts.techModalityCode ?? '01',
+                        display: opts.techModalityDisplay ?? 'Intramural',
+                    }],
+                },
+            ],
             period: {
                 start: toDateString(opts.eventStart),
                 ...(opts.eventEnd && { end: toDateString(opts.eventEnd) }),
             },
-        },
+        }],
         section: opts.sections,
     };
 }
@@ -1264,7 +1301,7 @@ export class RDAAmbulatoryTranslator {
         const idValue  = input.patient.identifier_value;
         const patientId    = `${idType}-${idValue}`;
         const orgId        = input.tenant.institution_code;
-        const practId      = `CC-${input.practitioner.doctor_license}`;
+        const practId      = `${(input.practitioner.doctor_identifier_type ?? 'CC').toUpperCase()}-${input.practitioner.doctor_license}`;
         const locationId   = `${orgId}-01`;
         const paymentId    = input.payment_source?.id ?? 'PaymentSource-0';
 
@@ -1378,10 +1415,14 @@ export class RDAAmbulatoryTranslator {
             practitionerRef: prRef,
             encounterRef:    encRef,
             compositionDate: input.composition_date,
-            eventStart:      input.event_start,
-            eventEnd:        input.event_end,
+            eventStart:      input.event_start ?? input.encounter.period_start,
+            eventEnd:        input.event_end ?? input.encounter.period_end,
             attesterRef:     prRef,          // médico como atestador legal
             sections,
+            serviceGroupCode:    input.encounter.service_group_code,
+            serviceGroupDisplay: input.encounter.service_group_display,
+            techModalityCode:    input.encounter.tech_modality_code,
+            techModalityDisplay: input.encounter.tech_modality_display,
         });
 
         // ── Ensamblar entries ─────────────────────────────────────────────────

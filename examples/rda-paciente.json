@@ -1,0 +1,64 @@
+{
+  "uuid_evento": "PAC-2026-000777",
+  "historia_id": "HC-998877",
+  "patient": {
+    "identifier_type": "CC",
+    "identifier_value": "80189301",
+    "given_name": "Carlos",
+    "middle_name": "Andrés",
+    "father_family_name": "Pérez",
+    "mother_family_name": "Gómez",
+    "gender": "male",
+    "birth_date": "1985-04-12",
+    "address_city": "Bogotá D.C.",
+    "divipola_code": "11001",
+    "residence_zone_code": "01",
+    "nationality_code": "170"
+  },
+  "tenant": {
+    "institution_code": "4443000277",
+    "nit": "900123456",
+    "name": "IPS Ejemplo S.A.S.",
+    "sede_code": "01"
+  },
+  "practitioner": {
+    "doctor_name": "Dra. Laura Marcela Ríos Torres",
+    "doctor_license": "22699214"
+  },
+  "conditions": [
+    {
+      "id": "0",
+      "condition_code": "E119",
+      "condition_display": "DIABETES MELLITUS NO INSULINODEPENDIENTE SIN MENCION DE COMPLICACION",
+      "clinical_status": "active"
+    }
+  ],
+  "allergies": [
+    {
+      "id": "0",
+      "allergen": "Penicilina",
+      "allergen_type_code": "01",
+      "allergen_type": "Medicamento",
+      "status": "active"
+    }
+  ],
+  "familyHistory": [
+    {
+      "id": "0",
+      "relationship_code": "01",
+      "relationship_display": "Padre",
+      "condition_code": "I10X",
+      "condition_display": "HIPERTENSION ESENCIAL (PRIMARIA)"
+    }
+  ],
+  "medications": [
+    {
+      "id": "0",
+      "generic_name": "METFORMINA",
+      "medication_code": "1234",
+      "status": "active"
+    }
+  ],
+  "eventStart": "2026-11-18T08:00:00-05:00",
+  "eventEnd": "2026-11-18T08:25:00-05:00"
+}

@@ -127,10 +127,13 @@ export class FhirRepository {
     mensaje: string,
     intentosActuales: number,
     maxIntentos: number,
+    opts: { definitivo?: boolean; respuesta?: Record<string, unknown> } = {},
   ): Promise<void> {
     const nuevosIntentos = intentosActuales + 1;
+    // definitivo = error de contenido (400/409/422…): no se reintenta automáticamente.
+    // El cliente puede corregir con PUT /api/rda/envios/:id o reintentar con POST …/reintentar
     const nuevoEstado =
-      nuevosIntentos >= maxIntentos
+      opts.definitivo || nuevosIntentos >= maxIntentos
         ? EstadoRegistro.ERROR
         : EstadoRegistro.REINTENTANDO;
 
@@ -140,11 +143,15 @@ export class FhirRepository {
         estado               = $1,
         intentos             = $2,
         ultimo_error         = $3,
+        respuesta_ministerio = COALESCE($5::jsonb, respuesta_ministerio),
         fecha_ultimo_intento = NOW(),
         updated_at           = NOW()
       WHERE id = $4
     `;
-    await this.pool.query(sql, [nuevoEstado, nuevosIntentos, mensaje, id]);
+    await this.pool.query(sql, [
+      nuevoEstado, nuevosIntentos, mensaje, id,
+      opts.respuesta ? JSON.stringify(opts.respuesta) : null,
+    ]);
   }
 
   /**

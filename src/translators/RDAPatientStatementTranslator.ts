@@ -1,7 +1,6 @@
 // src/translators/RDAPatientStatementTranslator.ts
 // Versión 4.0 — alineación exacta con JSON oficial MinSalud RDA
 
-import { v4 as uuidv4 } from 'uuid';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIPOS DE ENTRADA
@@ -649,14 +648,14 @@ function buildCompositionResource(opts: {
                     coding: [{
                         system: CS.COL_SERVICE_GROUP,
                         code: svcCode?.trim() ? svcCode : '01',
-                        display: techDisplay?.trim() ? techDisplay : 'Consulta externa'
+                        display: svcDisplay?.trim() ? svcDisplay : 'Consulta externa'
                     }],
                 },
                 {
                     coding: [{
                         system: CS.COL_TECH_MODALITY,
                         code: techCode?.trim() ? techCode : '01',
-                        display: svcDisplay?.trim() ? svcDisplay : 'Intramural'
+                        display: techDisplay?.trim() ? techDisplay : 'Intramural'
                     }],
                 },
 
@@ -810,14 +809,17 @@ function buildMedicationStatementResource(m: RDAMedicationRow, pRef: string): ob
         id: `MedicationStatement-${m.id}`,
         meta: { profile: [PROFILES.MEDICATION_STATEMENT] },
         status: m.status === 'active' ? 'active' : 'completed',
-        medicationCodeableConcept: {
-            coding: [{
-                system: CS.COL_MEDICATION,
-                code: m.medication_code ?? '0',
-                display: m.generic_name.toUpperCase(),
-            }],
-            ...(m.brand_name && { text: `${m.generic_name} (${m.brand_name})` }),
-        },
+        // Sin código → solo texto (el código '0' es rechazado por el Ministerio)
+        medicationCodeableConcept: m.medication_code
+            ? {
+                coding: [{
+                    system: CS.COL_MEDICATION,
+                    code: m.medication_code,
+                    display: m.generic_name.toUpperCase(),
+                }],
+                ...(m.brand_name && { text: `${m.generic_name} (${m.brand_name})` }),
+            }
+            : { text: m.brand_name ? `${m.generic_name} (${m.brand_name})` : m.generic_name },
         subject: { reference: pRef },
     };
 }
@@ -830,7 +832,11 @@ export class RDAPatientStatementTranslator {
 
     static translate(input: RDAPatientStatementInput): object {
 
-        const license = input.practitioner.doctor_license ?? uuidv4();
+        // El Ministerio exige ID TipoDoc-Numero: sin documento del profesional no se puede generar el RDA
+        if (!input.practitioner.doctor_license) {
+            throw new Error('practitioner.doctor_license (número de documento del profesional) es obligatorio');
+        }
+        const license = input.practitioner.doctor_license;
 
         const idType = input.patient.identifier_type ?? 'CC';
         const idValue = input.patient.identifier_value;

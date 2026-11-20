@@ -1,0 +1,647 @@
+{
+  "info": {
+    "name": "Bridge API FHIR – RDA MinSalud",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "api_key",
+      "value": "baf_..."
+    },
+    {
+      "key": "admin_key",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Cliente",
+      "item": [
+        {
+          "name": "Registrar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-admin-key",
+                "value": "{{admin_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"IPS Ejemplo SAS\",\n  \"email\": \"ti@ips.co\",\n  \"nit\": \"900123456\",\n  \"institution_code\": \"4443000277\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Credenciales Ministerio",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/ministry-credentials",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "ministry-credentials"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"\",\n  \"client_secret\": \"\",\n  \"tenant_id\": \"\",\n  \"scope\": \"\",\n  \"api_url\": \"https://sandbox.ihcecol.gov.co/ihce\",\n  \"subscription_key\": \"\",\n  \"mode\": \"sandbox\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Perfil",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "profile"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Regenerar API key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/regenerate-key",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "regenerate-key"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "RDA",
+      "item": [
+        {
+          "name": "Tipos de RDA",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rda/tipos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rda",
+                "tipos"
+              ]
+            }
+          }
+        },
+        {
+          "name": "paciente – preview (no guarda)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rda/paciente/translate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rda",
+                "paciente",
+                "translate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uuid_evento\": \"PAC-2026-000777\",\n  \"historia_id\": \"HC-998877\",\n  \"patient\": {\n    \"identifier_type\": \"CC\",\n    \"identifier_value\": \"80189301\",\n    \"given_name\": \"Carlos\",\n    \"middle_name\": \"Andrés\",\n    \"father_family_name\": \"Pérez\",\n    \"mother_family_name\": \"Gómez\",\n    \"gender\": \"male\",\n    \"birth_date\": \"1985-04-12\",\n    \"address_city\": \"Bogotá D.C.\",\n    \"divipola_code\": \"11001\",\n    \"residence_zone_code\": \"01\",\n    \"nationality_code\": \"170\"\n  },\n  \"tenant\": {\n    \"institution_code\": \"4443000277\",\n    \"nit\": \"900123456\",\n    \"name\": \"IPS Ejemplo S.A.S.\",\n    \"sede_code\": \"01\"\n  },\n  \"practitioner\": {\n    \"doctor_name\": \"Dra. Laura Marcela Ríos Torres\",\n    \"doctor_license\": \"22699214\"\n  },\n  \"conditions\": [\n    {\n      \"id\": \"0\",\n      \"condition_code\": \"E119\",\n      \"condition_display\": \"DIABETES MELLITUS NO INSULINODEPENDIENTE SIN MENCION DE COMPLICACION\",\n      \"clinical_status\": \"active\"\n    }\n  ],\n  \"allergies\": [\n    {\n      \"id\": \"0\",\n      \"allergen\": \"Penicilina\",\n      \"allergen_type_code\": \"01\",\n      \"allergen_type\": \"Medicamento\",\n      \"status\": \"active\"\n    }\n  ],\n  \"familyHistory\": [\n    {\n      \"id\": \"0\",\n      \"relationship_code\": \"01\",\n      \"relationship_display\": \"Padre\",\n      \"condition_code\": \"I10X\",\n      \"condition_display\": \"HIPERTENSION ESENCIAL (PRIMARIA)\"\n    }\n  ],\n  \"medications\": [\n    {\n      \"id\": \"0\",\n      \"generic_name\": \"METFORMINA\",\n      \"medication_code\": \"1234\",\n      \"status\": \"active\"\n    }\n  ],\n  \"eventStart\": \"2026-11-18T08:00:00-05:00\",\n  \"eventEnd\": \"2026-11-18T08:25:00-05:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "consulta – preview (no guarda)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rda/consulta/translate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rda",
+                "consulta",
+                "translate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uuid_evento\": \"CON-2026-004512\",\n  \"historia_id\": \"HC-998877\",\n  \"patient\": {\n    \"identifier_type\": \"CC\",\n    \"identifier_value\": \"80189301\",\n    \"given_name\": \"Carlos\",\n    \"middle_name\": \"Andrés\",\n    \"father_family_name\": \"Pérez\",\n    \"mother_family_name\": \"Gómez\",\n    \"gender\": \"male\",\n    \"birth_date\": \"1985-04-12\",\n    \"address_city\": \"Bogotá D.C.\",\n    \"divipola_code\": \"11001\",\n    \"residence_zone_code\": \"01\",\n    \"nationality_code\": \"170\"\n  },\n  \"tenant\": {\n    \"institution_code\": \"4443000277\",\n    \"nit\": \"900123456\",\n    \"name\": \"IPS Ejemplo S.A.S.\",\n    \"sede_code\": \"01\"\n  },\n  \"practitioner\": {\n    \"doctor_name\": \"Dra. Laura Marcela Ríos Torres\",\n    \"doctor_identifier_type\": \"CC\",\n    \"doctor_license\": \"22699214\"\n  },\n  \"encounter\": {\n    \"encounter_id\": \"ADT-CE-12001\",\n    \"period_start\": \"2026-11-18T08:00:00-05:00\",\n    \"period_end\": \"2026-11-18T08:25:00-05:00\",\n    \"tech_modality_code\": \"01\",\n    \"tech_modality_display\": \"Intramural\",\n    \"service_group_code\": \"01\",\n    \"service_group_display\": \"Consulta externa\",\n    \"reps_service_code\": \"328\",\n    \"reps_service_display\": \"MEDICINA GENERAL\",\n    \"care_setting_code\": \"05\",\n    \"care_setting_display\": \"Institucional\",\n    \"cups_service_code\": \"890201\",\n    \"cups_service_display\": \"CONSULTA DE PRIMERA VEZ POR MEDICINA GENERAL\",\n    \"external_cause_code\": \"38\",\n    \"external_cause_display\": \"ENFERMEDAD GENERAL\"\n  },\n  \"payment_source\": {\n    \"id\": \"EPS037\",\n    \"name\": \"EPS Ejemplo\"\n  },\n  \"conditions\": [\n    {\n      \"id\": \"0\",\n      \"condition_code\": \"J00X\",\n      \"condition_display\": \"RINOFARINGITIS AGUDA [RESFRIADO COMUN]\",\n      \"diagnosis_type_code\": \"02\",\n      \"diagnosis_role_code\": \"8319008\",\n      \"rank\": 1\n    }\n  ],\n  \"allergies\": [],\n  \"medication_requests\": [\n    {\n      \"id\": \"0\",\n      \"medication_code\": \"626\",\n      \"medication_system\": \"MipresINN\",\n      \"medication_display\": \"PARACETAMOL\",\n      \"dosage_text\": \"500 mg cada 8 horas por 3 días\",\n      \"duration_days\": 3,\n      \"route_code\": \"048\",\n      \"route_display\": \"ORAL\",\n      \"reason_condition_id\": \"0\"\n    }\n  ],\n  \"service_requests\": [],\n  \"ocupacion\": {\n    \"occupation_code\": \"3121\",\n    \"occupation_display\": \"Analistas de sistemas informáticos\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "urgencias – preview (no guarda)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rda/urgencias/translate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rda",
+                "urgencias",
+                "translate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uuid_evento\": \"URG-2026-000123\",\n  \"historia_id\": \"HC-998877\",\n  \"patient\": {\n    \"identifier_type\": \"CC\",\n    \"identifier_value\": \"80189301\",\n    \"given_name\": \"Carlos\",\n    \"middle_name\": \"Andrés\",\n    \"father_family_name\": \"Pérez\",\n    \"mother_family_name\": \"Gómez\",\n    \"gender\": \"male\",\n    \"birth_date\": \"1985-04-12\",\n    \"address_city\": \"Bogotá D.C.\",\n    \"divipola_code\": \"11001\",\n    \"residence_zone_code\": \"01\",\n    \"nationality_code\": \"170\"\n  },\n  \"tenant\": {\n    \"institution_code\": \"4443000277\",\n    \"nit\": \"900123456\",\n    \"name\": \"IPS Ejemplo S.A.S.\",\n    \"sede_code\": \"01\"\n  },\n  \"practitioner\": {\n    \"doctor_name\": \"Dra. Laura Marcela Ríos Torres\",\n    \"doctor_identifier_type\": \"CC\",\n    \"doctor_license\": \"22699214\"\n  },\n  \"encounter\": {\n    \"encounter_id\": \"ADT-URG-9864463\",\n    \"period_start\": \"2026-11-19T09:59:00-05:00\",\n    \"period_end\": \"2026-11-19T14:30:00-05:00\",\n    \"tech_modality_code\": \"01\",\n    \"tech_modality_display\": \"Intramural\",\n    \"external_cause_code\": \"22\",\n    \"external_cause_display\": \"ACCIDENTE EN EL HOGAR\",\n    \"admit_source_code\": \"01\",\n    \"discharge_disposition_code\": \"01\",\n    \"discharge_deceased_status_code\": \"01\"\n  },\n  \"payers\": [\n    {\n      \"eapb_code\": \"EPS037\",\n      \"name\": \"EPS Ejemplo\"\n    }\n  ],\n  \"triage\": {\n    \"code\": \"03\",\n    \"datetime\": \"2026-11-19T10:05:00-05:00\"\n  },\n  \"diagnoses\": [\n    {\n      \"id\": \"0\",\n      \"role\": \"ingreso\",\n      \"condition_code\": \"S934\",\n      \"condition_display\": \"ESGUINCES Y TORCEDURAS DEL TOBILLO\",\n      \"diagnosis_type_code\": \"01\"\n    },\n    {\n      \"id\": \"1\",\n      \"role\": \"egreso\",\n      \"condition_code\": \"S934\",\n      \"condition_display\": \"ESGUINCES Y TORCEDURAS DEL TOBILLO\",\n      \"diagnosis_type_code\": \"02\"\n    }\n  ],\n  \"allergies\": [\n    {\n      \"id\": \"0\",\n      \"allergen\": \"Penicilina\",\n      \"allergen_type_code\": \"01\",\n      \"allergen_type_display\": \"Medicamento\",\n      \"status\": \"active\"\n    }\n  ],\n  \"medication_admin_requests\": [\n    {\n      \"id\": \"0\",\n      \"medication_code\": \"626\",\n      \"medication_display\": \"PARACETAMOL\",\n      \"authored_on\": \"2026-11-19T10:20:00-05:00\",\n      \"dosage_text\": \"1 g IV dosis única\",\n      \"route_code\": \"042\",\n      \"route_display\": \"INTRAVENOSA\"\n    }\n  ],\n  \"medication_administrations\": [\n    {\n      \"id\": \"0\",\n      \"request_id\": \"0\",\n      \"medication_code\": \"626\",\n      \"medication_display\": \"PARACETAMOL\",\n      \"effective_start\": \"2026-11-19T10:30:00-05:00\",\n      \"dose_value\": 1,\n      \"dose_unit\": \"g\"\n    }\n  ],\n  \"medication_requests\": [\n    {\n      \"id\": \"0\",\n      \"medication_code\": \"626\",\n      \"medication_display\": \"PARACETAMOL\",\n      \"prescription_number\": \"RX-000-123\",\n      \"dosage_text\": \"500 mg cada 8 horas por 5 días\",\n      \"duration_days\": 5,\n      \"route_code\": \"048\",\n      \"route_display\": \"ORAL\",\n      \"dispense_quantity_value\": 15,\n      \"dispense_quantity_unit\": \"tabletas\",\n      \"reason_condition_id\": \"1\"\n    }\n  ],\n  \"procedures\": [\n    {\n      \"id\": \"0\",\n      \"cups_code\": \"873420\",\n      \"cups_display\": \"RADIOGRAFIA DE TOBILLO\",\n      \"performed_datetime\": \"2026-11-19T11:00:00-05:00\",\n      \"reason_code\": \"15\",\n      \"reason_display\": \"DIAGNOSTICO\",\n      \"main_condition_id\": \"0\",\n      \"related_condition_id\": \"1\"\n    }\n  ],\n  \"procedure_results\": [\n    {\n      \"id\": \"0\",\n      \"procedure_id\": \"0\",\n      \"cups_code\": \"873420\",\n      \"cups_display\": \"RADIOGRAFIA DE TOBILLO\",\n      \"effective_datetime\": \"2026-11-19T11:30:00-05:00\",\n      \"components\": [\n        {\n          \"name\": \"Hallazgo\",\n          \"value_string\": \"Sin evidencia de fractura\"\n        }\n      ]\n    }\n  ],\n  \"incapacidad\": {\n    \"scope_code\": \"01\",\n    \"scope_display\": \"Nueva\",\n    \"days\": 3\n  },\n  \"ocupacion\": {\n    \"occupation_code\": \"3121\",\n    \"occupation_display\": \"Analistas de sistemas informáticos\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "hospitalizacion – preview (no guarda)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rda/hospitalizacion/translate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rda",
+                "hospitalizacion",
+                "translate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uuid_evento\": \"HOSP-2026-000045\",\n  \"historia_id\": \"HC-998877\",\n  \"patient\": {\n    \"identifier_type\": \"CC\",\n    \"identifier_value\": \"80189301\",\n    \"given_name\": \"Carlos\",\n    \"middle_name\": \"Andrés\",\n    \"father_family_name\": \"Pérez\",\n    \"mother_family_name\": \"Gómez\",\n    \"gender\": \"male\",\n    \"birth_date\": \"1985-04-12\",\n    \"address_city\": \"Bogotá D.C.\",\n    \"divipola_code\": \"11001\",\n    \"residence_zone_code\": \"01\",\n    \"nationality_code\": \"170\"\n  },\n  \"tenant\": {\n    \"institution_code\": \"4443000277\",\n    \"nit\": \"900123456\",\n    \"name\": \"IPS Ejemplo S.A.S.\",\n    \"sede_code\": \"01\"\n  },\n  \"practitioner\": {\n    \"doctor_name\": \"Dra. Laura Marcela Ríos Torres\",\n    \"doctor_identifier_type\": \"CC\",\n    \"doctor_license\": \"22699214\"\n  },\n  \"encounter\": {\n    \"encounter_id\": \"ADT-HOSP-7741\",\n    \"period_start\": \"2026-11-10T16:00:00-05:00\",\n    \"period_end\": \"2026-11-15T11:00:00-05:00\",\n    \"tech_modality_code\": \"01\",\n    \"tech_modality_display\": \"Intramural\",\n    \"care_setting_code\": \"05\",\n    \"care_setting_display\": \"Institucional\",\n    \"external_cause_code\": \"38\",\n    \"external_cause_display\": \"ENFERMEDAD GENERAL\",\n    \"admit_source_code\": \"02\",\n    \"discharge_disposition_code\": \"01\",\n    \"discharge_deceased_status_code\": \"01\"\n  },\n  \"payers\": [\n    {\n      \"eapb_code\": \"EPS037\",\n      \"name\": \"EPS Ejemplo\"\n    }\n  ],\n  \"diagnoses\": [\n    {\n      \"id\": \"0\",\n      \"role\": \"ingreso\",\n      \"condition_code\": \"J189\",\n      \"condition_display\": \"NEUMONIA, NO ESPECIFICADA\",\n      \"diagnosis_type_code\": \"01\"\n    },\n    {\n      \"id\": \"1\",\n      \"role\": \"egreso\",\n      \"condition_code\": \"J189\",\n      \"condition_display\": \"NEUMONIA, NO ESPECIFICADA\",\n      \"diagnosis_type_code\": \"02\"\n    },\n    {\n      \"id\": \"2\",\n      \"role\": \"comorbilidad\",\n      \"condition_code\": \"E119\",\n      \"condition_display\": \"DIABETES MELLITUS NO INSULINODEPENDIENTE SIN MENCION DE COMPLICACION\"\n    }\n  ],\n  \"allergies\": [\n    {\n      \"id\": \"0\",\n      \"allergen\": \"Penicilina\",\n      \"allergen_type_code\": \"01\",\n      \"allergen_type_display\": \"Medicamento\",\n      \"status\": \"active\"\n    }\n  ],\n  \"medication_admin_requests\": [\n    {\n      \"id\": \"0\",\n      \"medication_display\": \"AMPICILINA + SULBACTAM 1.5 g\",\n      \"authored_on\": \"2026-11-10T17:00:00-05:00\",\n      \"dosage_text\": \"1.5 g IV cada 6 horas\",\n      \"route_code\": \"042\",\n      \"route_display\": \"INTRAVENOSA\"\n    }\n  ],\n  \"medication_administrations\": [\n    {\n      \"id\": \"0\",\n      \"request_id\": \"0\",\n      \"medication_display\": \"AMPICILINA + SULBACTAM 1.5 g\",\n      \"effective_start\": \"2026-11-10T18:00:00-05:00\",\n      \"effective_end\": \"2026-11-15T06:00:00-05:00\"\n    }\n  ],\n  \"medication_requests\": [\n    {\n      \"id\": \"0\",\n      \"medication_code\": \"626\",\n      \"medication_display\": \"PARACETAMOL\",\n      \"prescription_number\": \"RX-000-123\",\n      \"dosage_text\": \"500 mg cada 8 horas por 5 días\",\n      \"duration_days\": 5,\n      \"route_code\": \"048\",\n      \"route_display\": \"ORAL\",\n      \"dispense_quantity_value\": 15,\n      \"dispense_quantity_unit\": \"tabletas\",\n      \"reason_condition_id\": \"1\"\n    }\n  ],\n  \"procedures\": [\n    {\n      \"id\": \"0\",\n      \"cups_code\": \"871121\",\n      \"cups_display\": \"RADIOGRAFIA DE TORAX (P.A. O A.P. Y LATERAL, DECUBITO LATERAL, OBLICUAS O LATERAL)\",\n      \"performed_datetime\": \"2026-11-10T16:40:00-05:00\",\n      \"reason_code\": \"15\",\n      \"main_condition_id\": \"0\",\n      \"related_condition_id\": \"2\"\n    }\n  ],\n  \"procedure_results\": [\n    {\n      \"id\": \"0\",\n      \"procedure_id\": \"0\",\n      \"cups_code\": \"871121\",\n      \"cups_display\": \"RADIOGRAFIA DE TORAX (P.A. O A.P. Y LATERAL, DECUBITO LATERAL, OBLICUAS O LATERAL)\",\n      \"effective_datetime\": \"2026-11-10T17:10:00-05:00\",\n      \"components\": [\n        {\n          \"name\": \"Hallazgo\",\n          \"value_string\": \"Consolidación basal derecha\"\n        }\n      ]\n    }\n  ],\n  \"incapacidad\": {\n    \"scope_code\": \"01\",\n    \"scope_display\": \"Nueva\",\n    \"days\": 3\n  },\n  \"ocupacion\": {\n    \"occupation_code\": \"3121\",\n    \"occupation_display\": \"Analistas de sistemas informáticos\"\n  },\n  \"service_requests\": [\n    {\n      \"id\": \"0\",\n      \"cups_code\": \"890201\",\n      \"cups_display\": \"CONSULTA DE PRIMERA VEZ POR MEDICINA GENERAL\",\n      \"reason_code\": \"15\",\n      \"reason_display\": \"DIAGNOSTICO\"\n    }\n  ],\n  \"document_references\": [\n    {\n      \"id\": \"0\",\n      \"loinc_code\": \"18842-5\",\n      \"loinc_display\": \"Discharge summary\",\n      \"doc_type_code\": \"EPI\",\n      \"doc_type_display\": \"Epicrisis\",\n      \"description\": \"Epicrisis de hospitalización\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "paciente – encolar envío",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rda/paciente",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rda",
+                "paciente"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uuid_evento\": \"PAC-2026-000777\",\n  \"historia_id\": \"HC-998877\",\n  \"patient\": {\n    \"identifier_type\": \"CC\",\n    \"identifier_value\": \"80189301\",\n    \"given_name\": \"Carlos\",\n    \"middle_name\": \"Andrés\",\n    \"father_family_name\": \"Pérez\",\n    \"mother_family_name\": \"Gómez\",\n    \"gender\": \"male\",\n    \"birth_date\": \"1985-04-12\",\n    \"address_city\": \"Bogotá D.C.\",\n    \"divipola_code\": \"11001\",\n    \"residence_zone_code\": \"01\",\n    \"nationality_code\": \"170\"\n  },\n  \"tenant\": {\n    \"institution_code\": \"4443000277\",\n    \"nit\": \"900123456\",\n    \"name\": \"IPS Ejemplo S.A.S.\",\n    \"sede_code\": \"01\"\n  },\n  \"practitioner\": {\n    \"doctor_name\": \"Dra. Laura Marcela Ríos Torres\",\n    \"doctor_license\": \"22699214\"\n  },\n  \"conditions\": [\n    {\n      \"id\": \"0\",\n      \"condition_code\": \"E119\",\n      \"condition_display\": \"DIABETES MELLITUS NO INSULINODEPENDIENTE SIN MENCION DE COMPLICACION\",\n      \"clinical_status\": \"active\"\n    }\n  ],\n  \"allergies\": [\n    {\n      \"id\": \"0\",\n      \"allergen\": \"Penicilina\",\n      \"allergen_type_code\": \"01\",\n      \"allergen_type\": \"Medicamento\",\n      \"status\": \"active\"\n    }\n  ],\n  \"familyHistory\": [\n    {\n      \"id\": \"0\",\n      \"relationship_code\": \"01\",\n      \"relationship_display\": \"Padre\",\n      \"condition_code\": \"I10X\",\n      \"condition_display\": \"HIPERTENSION ESENCIAL (PRIMARIA)\"\n    }\n  ],\n  \"medications\": [\n    {\n      \"id\": \"0\",\n      \"generic_name\": \"METFORMINA\",\n      \"medication_code\": \"1234\",\n      \"status\": \"active\"\n    }\n  ],\n  \"eventStart\": \"2026-11-18T08:00:00-05:00\",\n  \"eventEnd\": \"2026-11-18T08:25:00-05:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "consulta – encolar envío",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rda/consulta",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rda",
+                "consulta"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uuid_evento\": \"CON-2026-004512\",\n  \"historia_id\": \"HC-998877\",\n  \"patient\": {\n    \"identifier_type\": \"CC\",\n    \"identifier_value\": \"80189301\",\n    \"given_name\": \"Carlos\",\n    \"middle_name\": \"Andrés\",\n    \"father_family_name\": \"Pérez\",\n    \"mother_family_name\": \"Gómez\",\n    \"gender\": \"male\",\n    \"birth_date\": \"1985-04-12\",\n    \"address_city\": \"Bogotá D.C.\",\n    \"divipola_code\": \"11001\",\n    \"residence_zone_code\": \"01\",\n    \"nationality_code\": \"170\"\n  },\n  \"tenant\": {\n    \"institution_code\": \"4443000277\",\n    \"nit\": \"900123456\",\n    \"name\": \"IPS Ejemplo S.A.S.\",\n    \"sede_code\": \"01\"\n  },\n  \"practitioner\": {\n    \"doctor_name\": \"Dra. Laura Marcela Ríos Torres\",\n    \"doctor_identifier_type\": \"CC\",\n    \"doctor_license\": \"22699214\"\n  },\n  \"encounter\": {\n    \"encounter_id\": \"ADT-CE-12001\",\n    \"period_start\": \"2026-11-18T08:00:00-05:00\",\n    \"period_end\": \"2026-11-18T08:25:00-05:00\",\n    \"tech_modality_code\": \"01\",\n    \"tech_modality_display\": \"Intramural\",\n    \"service_group_code\": \"01\",\n    \"service_group_display\": \"Consulta externa\",\n    \"reps_service_code\": \"328\",\n    \"reps_service_display\": \"MEDICINA GENERAL\",\n    \"care_setting_code\": \"05\",\n    \"care_setting_display\": \"Institucional\",\n    \"cups_service_code\": \"890201\",\n    \"cups_service_display\": \"CONSULTA DE PRIMERA VEZ POR MEDICINA GENERAL\",\n    \"external_cause_code\": \"38\",\n    \"external_cause_display\": \"ENFERMEDAD GENERAL\"\n  },\n  \"payment_source\": {\n    \"id\": \"EPS037\",\n    \"name\": \"EPS Ejemplo\"\n  },\n  \"conditions\": [\n    {\n      \"id\": \"0\",\n      \"condition_code\": \"J00X\",\n      \"condition_display\": \"RINOFARINGITIS AGUDA [RESFRIADO COMUN]\",\n      \"diagnosis_type_code\": \"02\",\n      \"diagnosis_role_code\": \"8319008\",\n      \"rank\": 1\n    }\n  ],\n  \"allergies\": [],\n  \"medication_requests\": [\n    {\n      \"id\": \"0\",\n      \"medication_code\": \"626\",\n      \"medication_system\": \"MipresINN\",\n      \"medication_display\": \"PARACETAMOL\",\n      \"dosage_text\": \"500 mg cada 8 horas por 3 días\",\n      \"duration_days\": 3,\n      \"route_code\": \"048\",\n      \"route_display\": \"ORAL\",\n      \"reason_condition_id\": \"0\"\n    }\n  ],\n  \"service_requests\": [],\n  \"ocupacion\": {\n    \"occupation_code\": \"3121\",\n    \"occupation_display\": \"Analistas de sistemas informáticos\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "urgencias – encolar envío",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rda/urgencias",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rda",
+                "urgencias"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uuid_evento\": \"URG-2026-000123\",\n  \"historia_id\": \"HC-998877\",\n  \"patient\": {\n    \"identifier_type\": \"CC\",\n    \"identifier_value\": \"80189301\",\n    \"given_name\": \"Carlos\",\n    \"middle_name\": \"Andrés\",\n    \"father_family_name\": \"Pérez\",\n    \"mother_family_name\": \"Gómez\",\n    \"gender\": \"male\",\n    \"birth_date\": \"1985-04-12\",\n    \"address_city\": \"Bogotá D.C.\",\n    \"divipola_code\": \"11001\",\n    \"residence_zone_code\": \"01\",\n    \"nationality_code\": \"170\"\n  },\n  \"tenant\": {\n    \"institution_code\": \"4443000277\",\n    \"nit\": \"900123456\",\n    \"name\": \"IPS Ejemplo S.A.S.\",\n    \"sede_code\": \"01\"\n  },\n  \"practitioner\": {\n    \"doctor_name\": \"Dra. Laura Marcela Ríos Torres\",\n    \"doctor_identifier_type\": \"CC\",\n    \"doctor_license\": \"22699214\"\n  },\n  \"encounter\": {\n    \"encounter_id\": \"ADT-URG-9864463\",\n    \"period_start\": \"2026-11-19T09:59:00-05:00\",\n    \"period_end\": \"2026-11-19T14:30:00-05:00\",\n    \"tech_modality_code\": \"01\",\n    \"tech_modality_display\": \"Intramural\",\n    \"external_cause_code\": \"22\",\n    \"external_cause_display\": \"ACCIDENTE EN EL HOGAR\",\n    \"admit_source_code\": \"01\",\n    \"discharge_disposition_code\": \"01\",\n    \"discharge_deceased_status_code\": \"01\"\n  },\n  \"payers\": [\n    {\n      \"eapb_code\": \"EPS037\",\n      \"name\": \"EPS Ejemplo\"\n    }\n  ],\n  \"triage\": {\n    \"code\": \"03\",\n    \"datetime\": \"2026-11-19T10:05:00-05:00\"\n  },\n  \"diagnoses\": [\n    {\n      \"id\": \"0\",\n      \"role\": \"ingreso\",\n      \"condition_code\": \"S934\",\n      \"condition_display\": \"ESGUINCES Y TORCEDURAS DEL TOBILLO\",\n      \"diagnosis_type_code\": \"01\"\n    },\n    {\n      \"id\": \"1\",\n      \"role\": \"egreso\",\n      \"condition_code\": \"S934\",\n      \"condition_display\": \"ESGUINCES Y TORCEDURAS DEL TOBILLO\",\n      \"diagnosis_type_code\": \"02\"\n    }\n  ],\n  \"allergies\": [\n    {\n      \"id\": \"0\",\n      \"allergen\": \"Penicilina\",\n      \"allergen_type_code\": \"01\",\n      \"allergen_type_display\": \"Medicamento\",\n      \"status\": \"active\"\n    }\n  ],\n  \"medication_admin_requests\": [\n    {\n      \"id\": \"0\",\n      \"medication_code\": \"626\",\n      \"medication_display\": \"PARACETAMOL\",\n      \"authored_on\": \"2026-11-19T10:20:00-05:00\",\n      \"dosage_text\": \"1 g IV dosis única\",\n      \"route_code\": \"042\",\n      \"route_display\": \"INTRAVENOSA\"\n    }\n  ],\n  \"medication_administrations\": [\n    {\n      \"id\": \"0\",\n      \"request_id\": \"0\",\n      \"medication_code\": \"626\",\n      \"medication_display\": \"PARACETAMOL\",\n      \"effective_start\": \"2026-11-19T10:30:00-05:00\",\n      \"dose_value\": 1,\n      \"dose_unit\": \"g\"\n    }\n  ],\n  \"medication_requests\": [\n    {\n      \"id\": \"0\",\n      \"medication_code\": \"626\",\n      \"medication_display\": \"PARACETAMOL\",\n      \"prescription_number\": \"RX-000-123\",\n      \"dosage_text\": \"500 mg cada 8 horas por 5 días\",\n      \"duration_days\": 5,\n      \"route_code\": \"048\",\n      \"route_display\": \"ORAL\",\n      \"dispense_quantity_value\": 15,\n      \"dispense_quantity_unit\": \"tabletas\",\n      \"reason_condition_id\": \"1\"\n    }\n  ],\n  \"procedures\": [\n    {\n      \"id\": \"0\",\n      \"cups_code\": \"873420\",\n      \"cups_display\": \"RADIOGRAFIA DE TOBILLO\",\n      \"performed_datetime\": \"2026-11-19T11:00:00-05:00\",\n      \"reason_code\": \"15\",\n      \"reason_display\": \"DIAGNOSTICO\",\n      \"main_condition_id\": \"0\",\n      \"related_condition_id\": \"1\"\n    }\n  ],\n  \"procedure_results\": [\n    {\n      \"id\": \"0\",\n      \"procedure_id\": \"0\",\n      \"cups_code\": \"873420\",\n      \"cups_display\": \"RADIOGRAFIA DE TOBILLO\",\n      \"effective_datetime\": \"2026-11-19T11:30:00-05:00\",\n      \"components\": [\n        {\n          \"name\": \"Hallazgo\",\n          \"value_string\": \"Sin evidencia de fractura\"\n        }\n      ]\n    }\n  ],\n  \"incapacidad\": {\n    \"scope_code\": \"01\",\n    \"scope_display\": \"Nueva\",\n    \"days\": 3\n  },\n  \"ocupacion\": {\n    \"occupation_code\": \"3121\",\n    \"occupation_display\": \"Analistas de sistemas informáticos\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "hospitalizacion – encolar envío",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rda/hospitalizacion",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rda",
+                "hospitalizacion"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uuid_evento\": \"HOSP-2026-000045\",\n  \"historia_id\": \"HC-998877\",\n  \"patient\": {\n    \"identifier_type\": \"CC\",\n    \"identifier_value\": \"80189301\",\n    \"given_name\": \"Carlos\",\n    \"middle_name\": \"Andrés\",\n    \"father_family_name\": \"Pérez\",\n    \"mother_family_name\": \"Gómez\",\n    \"gender\": \"male\",\n    \"birth_date\": \"1985-04-12\",\n    \"address_city\": \"Bogotá D.C.\",\n    \"divipola_code\": \"11001\",\n    \"residence_zone_code\": \"01\",\n    \"nationality_code\": \"170\"\n  },\n  \"tenant\": {\n    \"institution_code\": \"4443000277\",\n    \"nit\": \"900123456\",\n    \"name\": \"IPS Ejemplo S.A.S.\",\n    \"sede_code\": \"01\"\n  },\n  \"practitioner\": {\n    \"doctor_name\": \"Dra. Laura Marcela Ríos Torres\",\n    \"doctor_identifier_type\": \"CC\",\n    \"doctor_license\": \"22699214\"\n  },\n  \"encounter\": {\n    \"encounter_id\": \"ADT-HOSP-7741\",\n    \"period_start\": \"2026-11-10T16:00:00-05:00\",\n    \"period_end\": \"2026-11-15T11:00:00-05:00\",\n    \"tech_modality_code\": \"01\",\n    \"tech_modality_display\": \"Intramural\",\n    \"care_setting_code\": \"05\",\n    \"care_setting_display\": \"Institucional\",\n    \"external_cause_code\": \"38\",\n    \"external_cause_display\": \"ENFERMEDAD GENERAL\",\n    \"admit_source_code\": \"02\",\n    \"discharge_disposition_code\": \"01\",\n    \"discharge_deceased_status_code\": \"01\"\n  },\n  \"payers\": [\n    {\n      \"eapb_code\": \"EPS037\",\n      \"name\": \"EPS Ejemplo\"\n    }\n  ],\n  \"diagnoses\": [\n    {\n      \"id\": \"0\",\n      \"role\": \"ingreso\",\n      \"condition_code\": \"J189\",\n      \"condition_display\": \"NEUMONIA, NO ESPECIFICADA\",\n      \"diagnosis_type_code\": \"01\"\n    },\n    {\n      \"id\": \"1\",\n      \"role\": \"egreso\",\n      \"condition_code\": \"J189\",\n      \"condition_display\": \"NEUMONIA, NO ESPECIFICADA\",\n      \"diagnosis_type_code\": \"02\"\n    },\n    {\n      \"id\": \"2\",\n      \"role\": \"comorbilidad\",\n      \"condition_code\": \"E119\",\n      \"condition_display\": \"DIABETES MELLITUS NO INSULINODEPENDIENTE SIN MENCION DE COMPLICACION\"\n    }\n  ],\n  \"allergies\": [\n    {\n      \"id\": \"0\",\n      \"allergen\": \"Penicilina\",\n      \"allergen_type_code\": \"01\",\n      \"allergen_type_display\": \"Medicamento\",\n      \"status\": \"active\"\n    }\n  ],\n  \"medication_admin_requests\": [\n    {\n      \"id\": \"0\",\n      \"medication_display\": \"AMPICILINA + SULBACTAM 1.5 g\",\n      \"authored_on\": \"2026-11-10T17:00:00-05:00\",\n      \"dosage_text\": \"1.5 g IV cada 6 horas\",\n      \"route_code\": \"042\",\n      \"route_display\": \"INTRAVENOSA\"\n    }\n  ],\n  \"medication_administrations\": [\n    {\n      \"id\": \"0\",\n      \"request_id\": \"0\",\n      \"medication_display\": \"AMPICILINA + SULBACTAM 1.5 g\",\n      \"effective_start\": \"2026-11-10T18:00:00-05:00\",\n      \"effective_end\": \"2026-11-15T06:00:00-05:00\"\n    }\n  ],\n  \"medication_requests\": [\n    {\n      \"id\": \"0\",\n      \"medication_code\": \"626\",\n      \"medication_display\": \"PARACETAMOL\",\n      \"prescription_number\": \"RX-000-123\",\n      \"dosage_text\": \"500 mg cada 8 horas por 5 días\",\n      \"duration_days\": 5,\n      \"route_code\": \"048\",\n      \"route_display\": \"ORAL\",\n      \"dispense_quantity_value\": 15,\n      \"dispense_quantity_unit\": \"tabletas\",\n      \"reason_condition_id\": \"1\"\n    }\n  ],\n  \"procedures\": [\n    {\n      \"id\": \"0\",\n      \"cups_code\": \"871121\",\n      \"cups_display\": \"RADIOGRAFIA DE TORAX (P.A. O A.P. Y LATERAL, DECUBITO LATERAL, OBLICUAS O LATERAL)\",\n      \"performed_datetime\": \"2026-11-10T16:40:00-05:00\",\n      \"reason_code\": \"15\",\n      \"main_condition_id\": \"0\",\n      \"related_condition_id\": \"2\"\n    }\n  ],\n  \"procedure_results\": [\n    {\n      \"id\": \"0\",\n      \"procedure_id\": \"0\",\n      \"cups_code\": \"871121\",\n      \"cups_display\": \"RADIOGRAFIA DE TORAX (P.A. O A.P. Y LATERAL, DECUBITO LATERAL, OBLICUAS O LATERAL)\",\n      \"effective_datetime\": \"2026-11-10T17:10:00-05:00\",\n      \"components\": [\n        {\n          \"name\": \"Hallazgo\",\n          \"value_string\": \"Consolidación basal derecha\"\n        }\n      ]\n    }\n  ],\n  \"incapacidad\": {\n    \"scope_code\": \"01\",\n    \"scope_display\": \"Nueva\",\n    \"days\": 3\n  },\n  \"ocupacion\": {\n    \"occupation_code\": \"3121\",\n    \"occupation_display\": \"Analistas de sistemas informáticos\"\n  },\n  \"service_requests\": [\n    {\n      \"id\": \"0\",\n      \"cups_code\": \"890201\",\n      \"cups_display\": \"CONSULTA DE PRIMERA VEZ POR MEDICINA GENERAL\",\n      \"reason_code\": \"15\",\n      \"reason_display\": \"DIAGNOSTICO\"\n    }\n  ],\n  \"document_references\": [\n    {\n      \"id\": \"0\",\n      \"loinc_code\": \"18842-5\",\n      \"loinc_display\": \"Discharge summary\",\n      \"doc_type_code\": \"EPI\",\n      \"doc_type_display\": \"Epicrisis\",\n      \"description\": \"Epicrisis de hospitalización\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Envíos",
+      "item": [
+        {
+          "name": "Listar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rda/envios?estado=ERROR&page=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rda",
+                "envios"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "ERROR"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resumen",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rda/envios/resumen",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rda",
+                "envios",
+                "resumen"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rda/envios/URG-2026-000123?incluir_payload=false",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rda",
+                "envios",
+                "URG-2026-000123"
+              ],
+              "query": [
+                {
+                  "key": "incluir_payload",
+                  "value": "false"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Corregir envío fallido",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rda/envios/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rda",
+                "envios",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uuid_evento\": \"CON-2026-004512\",\n  \"historia_id\": \"HC-998877\",\n  \"patient\": {\n    \"identifier_type\": \"CC\",\n    \"identifier_value\": \"80189301\",\n    \"given_name\": \"Carlos\",\n    \"middle_name\": \"Andrés\",\n    \"father_family_name\": \"Pérez\",\n    \"mother_family_name\": \"Gómez\",\n    \"gender\": \"male\",\n    \"birth_date\": \"1985-04-12\",\n    \"address_city\": \"Bogotá D.C.\",\n    \"divipola_code\": \"11001\",\n    \"residence_zone_code\": \"01\",\n    \"nationality_code\": \"170\"\n  },\n  \"tenant\": {\n    \"institution_code\": \"4443000277\",\n    \"nit\": \"900123456\",\n    \"name\": \"IPS Ejemplo S.A.S.\",\n    \"sede_code\": \"01\"\n  },\n  \"practitioner\": {\n    \"doctor_name\": \"Dra. Laura Marcela Ríos Torres\",\n    \"doctor_identifier_type\": \"CC\",\n    \"doctor_license\": \"22699214\"\n  },\n  \"encounter\": {\n    \"encounter_id\": \"ADT-CE-12001\",\n    \"period_start\": \"2026-11-18T08:00:00-05:00\",\n    \"period_end\": \"2026-11-18T08:25:00-05:00\",\n    \"tech_modality_code\": \"01\",\n    \"tech_modality_display\": \"Intramural\",\n    \"service_group_code\": \"01\",\n    \"service_group_display\": \"Consulta externa\",\n    \"reps_service_code\": \"328\",\n    \"reps_service_display\": \"MEDICINA GENERAL\",\n    \"care_setting_code\": \"05\",\n    \"care_setting_display\": \"Institucional\",\n    \"cups_service_code\": \"890201\",\n    \"cups_service_display\": \"CONSULTA DE PRIMERA VEZ POR MEDICINA GENERAL\",\n    \"external_cause_code\": \"38\",\n    \"external_cause_display\": \"ENFERMEDAD GENERAL\"\n  },\n  \"payment_source\": {\n    \"id\": \"EPS037\",\n    \"name\": \"EPS Ejemplo\"\n  },\n  \"conditions\": [\n    {\n      \"id\": \"0\",\n      \"condition_code\": \"J00X\",\n      \"condition_display\": \"RINOFARINGITIS AGUDA [RESFRIADO COMUN]\",\n      \"diagnosis_type_code\": \"02\",\n      \"diagnosis_role_code\": \"8319008\",\n      \"rank\": 1\n    }\n  ],\n  \"allergies\": [],\n  \"medication_requests\": [\n    {\n      \"id\": \"0\",\n      \"medication_code\": \"626\",\n      \"medication_system\": \"MipresINN\",\n      \"medication_display\": \"PARACETAMOL\",\n      \"dosage_text\": \"500 mg cada 8 horas por 3 días\",\n      \"duration_days\": 3,\n      \"route_code\": \"048\",\n      \"route_display\": \"ORAL\",\n      \"reason_condition_id\": \"0\"\n    }\n  ],\n  \"service_requests\": [],\n  \"ocupacion\": {\n    \"occupation_code\": \"3121\",\n    \"occupation_display\": \"Analistas de sistemas informáticos\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reintentar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rda/envios/1/reintentar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "rda",
+                "envios",
+                "1",
+                "reintentar"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

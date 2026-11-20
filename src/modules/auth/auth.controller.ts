@@ -10,7 +10,14 @@ export class AuthController {
     // POST /api/auth/register (PÚBLICO)
     async register(req: Request, res: Response): Promise<void> {
         try {
-            const { name, email, phone, nit, institution_type, institution_code, plan } = req.body;
+            // Si ADMIN_API_KEY está definido, solo el administrador puede registrar clientes
+            const adminKey = process.env.ADMIN_API_KEY;
+            if (adminKey && req.headers['x-admin-key'] !== adminKey) {
+                res.status(403).json({ success: false, error: 'Se requiere el header x-admin-key para registrar clientes' });
+                return;
+            }
+
+            const { name, email, phone, nit, institution_code, plan } = req.body;
 
             if (!name || !email) {
                 res.status(400).json({
@@ -21,8 +28,7 @@ export class AuthController {
             }
 
             const tenant = await authService.register({
-                name, email, phone, nit,
-                institution_type, institution_code, plan
+                name, email, phone, nit, institution_code, plan
             });
 
             res.status(201).json({
@@ -72,12 +78,15 @@ export class AuthController {
     async saveMinistryCredentials(req: Request, res: Response): Promise<void> {
         try {
             const tenant = (req as TenantRequest).tenant;
-            const { client_id, client_secret, auth_url, scope, mode } = req.body;
+            const { client_id, client_secret, tenant_id, scope, api_url, subscription_key, auth_url, mode } = req.body;
 
-            if (!client_id || !client_secret || !auth_url) {
+            const missing = ['client_id', 'client_secret', 'tenant_id', 'scope', 'api_url']
+                .filter(k => !req.body?.[k]);
+            if (missing.length > 0) {
                 res.status(400).json({
                     success: false,
-                    error: 'client_id, client_secret y auth_url son requeridos'
+                    error: `Campos requeridos: ${missing.join(', ')}`,
+                    hint: 'Valores entregados por MinSalud (Manual de gestión de credenciales IHCE). api_url = URL base, ej. https://sandbox.ihcecol.gov.co/ihce'
                 });
                 return;
             }
@@ -92,7 +101,7 @@ export class AuthController {
 
             const result = await authService.saveMinistryCredentials(
                 tenant.id,
-                { client_id, client_secret, auth_url, scope, mode }
+                { client_id, client_secret, tenant_id, scope, api_url, subscription_key, auth_url, mode }
             );
 
             res.json({

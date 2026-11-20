@@ -1,10 +1,6 @@
 // src/config/workerConfig.ts
 // Configuración centralizada del Worker de envío al Ministerio
-import dotenv from 'dotenv';
-import path from 'path';
-
-// Cargar .env desde src/.env (igual que el resto del proyecto)
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+import './env';
 
 export const workerConfig = {
   // Intervalo en segundos entre cada ejecución del worker
@@ -26,9 +22,9 @@ export const workerConfig = {
   db: {
     host: process.env.DB_HOST ?? 'localhost',
     port: parseInt(process.env.DB_PORT ?? '5432', 10),
-    user: process.env.DB_USER ?? 'emrodino',
-    password: process.env.DB_PASSWORD ?? 'Isys##2021',
-    database: process.env.DB_NAME ?? 'SSH7Fhire',
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
     // Pool separado y más pequeño que el del servidor Express
     max: 5,
     idleTimeoutMillis: 30_000,

@@ -1,9 +1,13 @@
 // src/services/FhirSenderService.ts
-// Orquesta el envío de un recurso FHIR al Ministerio con reintentos automáticos
-import axios, { AxiosInstance, isAxiosError } from 'axios';
+// Envía un Bundle RDA al Ministerio usando la operación correspondiente a su tipo:
+//   /Composition/$enviar-rda-paciente | $enviar-rda-consulta | $enviar-rda-urgencias | $enviar-rda-hospitalizacion
+import axios, { isAxiosError } from 'axios';
 import { ClienteCredenciales, ResultadoEnvio } from '../types/worker.types';
 import { MinisterioAuthService } from './MinisterioAuthService';
 import { logger } from '../utils/logger';
+
+/** Códigos HTTP que indican error en el contenido del RDA (reintentar no sirve sin corregirlo) */
+const NO_REINTENTABLES = new Set([400, 404, 409, 412, 413, 422]);
 
 export class FhirSenderService {
   constructor(
@@ -11,209 +15,117 @@ export class FhirSenderService {
     private readonly httpTimeoutMs: number = 30_000,
   ) { }
 
+  /** URL base IHCE del cliente, sin slash final (ej. https://sandbox.ihcecol.gov.co/ihce) */
+  static baseUrl(cliente: ClienteCredenciales): string {
+    return (cliente.ministry_api_murl ?? cliente.ministry_api_url ?? '').replace(/\/$/, '');
+  }
+
+  async headers(cliente: ClienteCredenciales): Promise<Record<string, string>> {
+    const token = await this.authService.getToken(cliente);
+    const h: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/fhir+json',
+      Accept: 'application/fhir+json',
+    };
+    if (cliente.ministry_api_msubs_key) h['Ocp-Apim-Subscription-Key'] = cliente.ministry_api_msubs_key;
+    return h;
+  }
+
   /**
-   * Envía un payload FHIR al Ministerio usando las credenciales del cliente.
-   * Maneja automáticamente renovación de token en caso de 401.
-   *
-   * @param registroId  - ID del registro en BD (para logs)
-   * @param cliente     - Credenciales y configuración del cliente
-   * @param payloadFhir - Objeto FHIR a enviar (debe tener resourceType)
-   * @returns ResultadoEnvio con éxito/error y metadata
+   * @param operation ruta de la operación, ej. "/Composition/$enviar-rda-urgencias"
    */
   async enviar(
     registroId: number,
     cliente: ClienteCredenciales,
     payloadFhir: Record<string, unknown>,
+    operation: string,
   ): Promise<ResultadoEnvio> {
     const inicio = Date.now();
-
-    try {
-      const { fullUrl, headers } = await this.buildRequestConfig(cliente);
-
-      logger.info(
-        `[FhirSender] Enviando registro #${registroId} → ${fullUrl} | cliente: ${cliente.nit}`,
-      );
-
-      const response = await axios.post(fullUrl, payloadFhir, {
-        headers,
-        timeout: this.httpTimeoutMs,
-      });
-      const duracionMs = Date.now() - inicio;
-
-      const ministerioId =
-        response.data?.id ??
-        (response.headers?.['location'] as string | undefined)?.split('/').pop() ??
-        null;
-
-      logger.info(
-        `[FhirSender] ✅ Registro #${registroId} enviado | ministerioId: ${ministerioId} | ${duracionMs}ms`,
-      );
-
-      return {
-        registroId,
-        exitoso: true,
-        ministerioId,
-        respuesta: response.data as Record<string, unknown>,
-        duracionMs,
-      };
-    } catch (err: unknown) {
-      const duracionMs = Date.now() - inicio;
-
-      // Si es 401 → invalidar token y reintentar UNA vez
-      if (isAxiosError(err) && err.response?.status === 401) {
-        logger.warn(
-          `[FhirSender] Token expirado para cliente ${cliente.nit}. Renovando y reintentando...`,
-        );
-        return this.enviarConTokenForzado(registroId, cliente, payloadFhir, inicio);
-      }
-
-      const mensajeError = this.extraerMensajeError(err);
-      logger.error(
-        `[FhirSender] ❌ Error en registro #${registroId} | cliente: ${cliente.nit} | ${mensajeError}`,
-      );
-
-      return {
-        registroId,
-        exitoso: false,
-        error: mensajeError,
-        duracionMs,
-      };
-    }
-  }
-
-  // ─── Privados ────────────────────────────────────────────────────────────────
-
-  /**
-   * Segundo intento tras renovación forzada de token (manejo de 401).
-   */
-  private async enviarConTokenForzado(
-    registroId: number,
-    cliente: ClienteCredenciales,
-    payloadFhir: Record<string, unknown>,
-    inicioOriginal: number,
-  ): Promise<ResultadoEnvio> {
-    try {
-      this.authService.invalidateToken(cliente.id);
-      const { fullUrl, headers } = await this.buildRequestConfig(cliente);
-
-      const response = await axios.post(fullUrl, payloadFhir, {
-        headers,
-        timeout: this.httpTimeoutMs,
-      });
-      const duracionMs = Date.now() - inicioOriginal;
-
-      const ministerioId = (response.data?.id as string | undefined) ?? undefined;
-
-      logger.info(
-        `[FhirSender] ✅ Registro #${registroId} enviado tras renovación de token | ${duracionMs}ms`,
-      );
-
-      return {
-        registroId,
-        exitoso: true,
-        ministerioId,
-        respuesta: response.data as Record<string, unknown>,
-        duracionMs,
-      };
-    } catch (err: unknown) {
-      const duracionMs = Date.now() - inicioOriginal;
-      const mensajeError = this.extraerMensajeError(err);
-
-      logger.error(
-        `[FhirSender] ❌ Error tras renovación de token en registro #${registroId}: ${mensajeError}`,
-      );
-
-      return {
-        registroId,
-        exitoso: false,
-        error: mensajeError,
-        duracionMs,
-      };
-    }
-  }
-
-  /**
-   * Construye la URL completa y los headers para la petición al Ministerio.
-   *
-   * IMPORTANTE: NO usamos axios.create({ baseURL }) porque Axios resuelve
-   * las rutas con '/' inicial como absolutas desde el host, ignorando
-   * cualquier path en el baseURL. En su lugar concatenamos la URL manualmente.
-   *
-   * URL final: {ministry_api_murl}/Composition/$enviar-rda-paciente
-   */
-  private async buildRequestConfig(
-    cliente: ClienteCredenciales,
-  ): Promise<{ fullUrl: string; headers: Record<string, string> }> {
-    const token = await this.authService.getToken(cliente);
-
-    // Tomar ministry_api_murl, quitar slash final si lo tuviera
-    const base = (cliente.ministry_api_murl ?? cliente.ministry_api_url ?? '').replace(/\/$/, '');
-
+    const base = FhirSenderService.baseUrl(cliente);
     if (!base) {
-      throw new Error(
-        `[FhirSender] Cliente ${cliente.nit} no tiene ministry_api_murl configurado.`,
-      );
+      return {
+        registroId, exitoso: false, reintentable: false, duracionMs: 0,
+        error: `Cliente ${cliente.nit} no tiene ministry_api_murl configurado (PUT /api/auth/ministry-credentials).`,
+      };
     }
+    // Concatenación directa: axios ignora el path del baseURL con rutas que empiezan por '/'
+    const fullUrl = `${base}${operation}`;
 
-    // Concatenación directa → evita el problema de resolución de Axios
-    const fullUrl = `${base}/Composition/$enviar-rda-paciente`;
-
-    logger.info(`[FhirSender] URL destino: ${fullUrl}`);
-
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/fhir+json',
-      Accept: 'application/fhir+json',
+    const intentar = async () => {
+      const response = await axios.post(fullUrl, payloadFhir, {
+        headers: await this.headers(cliente),
+        timeout: this.httpTimeoutMs,
+      });
+      return response;
     };
 
-    if (cliente.ministry_api_msubs_key) {
-      headers['Ocp-Apim-Subscription-Key'] = cliente.ministry_api_msubs_key;
-    }
+    try {
+      logger.info(`[FhirSender] #${registroId} → ${fullUrl} | cliente ${cliente.nit}`);
+      let response;
+      try {
+        response = await intentar();
+      } catch (err) {
+        // 401 → token vencido/revocado: renovar y reintentar UNA vez
+        if (isAxiosError(err) && err.response?.status === 401) {
+          logger.warn(`[FhirSender] 401 para cliente ${cliente.nit}. Renovando token y reintentando…`);
+          this.authService.invalidateToken(cliente.id);
+          response = await intentar();
+        } else {
+          throw err;
+        }
+      }
 
-    return { fullUrl, headers };
+      const duracionMs = Date.now() - inicio;
+      const ministerioId = FhirSenderService.extraerId(response.data, response.headers?.['location']);
+      logger.info(`[FhirSender] ✅ #${registroId} aceptado | ministerioId: ${ministerioId} | ${duracionMs}ms`);
+      return {
+        registroId, exitoso: true, ministerioId: ministerioId ?? undefined,
+        respuesta: response.data as Record<string, unknown>, httpStatus: response.status, duracionMs,
+      };
+    } catch (err: unknown) {
+      const duracionMs = Date.now() - inicio;
+      const httpStatus = isAxiosError(err) ? err.response?.status : undefined;
+      const mensajeError = FhirSenderService.extraerMensajeError(err);
+      const reintentable = httpStatus === undefined || !NO_REINTENTABLES.has(httpStatus);
+      logger.error(`[FhirSender] ❌ #${registroId} | cliente ${cliente.nit} | HTTP ${httpStatus ?? '-'} | ${mensajeError}`);
+      return {
+        registroId, exitoso: false, error: mensajeError, httpStatus, reintentable, duracionMs,
+        respuesta: isAxiosError(err) && err.response?.data && typeof err.response.data === 'object'
+          ? err.response.data as Record<string, unknown>
+          : undefined,
+      };
+    }
   }
 
-  /**
-   * Endpoint del RDA de pacientes (no usado directamente, la URL se construye en buildRequestConfig).
-   * Se mantiene por compatibilidad con la firma del método enviar().
-   */
-  private resolveEndpoint(_payload: Record<string, unknown>): string {
-    return '/Composition/$enviar-rda-paciente';
+  /** Busca el identificador del RDA en la respuesta (Bundle, recurso o header Location). */
+  static extraerId(data: any, location?: string): string | null {
+    if (data?.id) return String(data.id);
+    const comp = data?.entry?.find((e: any) => e?.resource?.resourceType === 'Composition')?.resource;
+    if (comp?.id) return String(comp.id);
+    if (data?.identifier?.value) return String(data.identifier.value);
+    if (location) return String(location).split('/').filter(Boolean).pop() ?? null;
+    return null;
   }
 
-  /**
-   * Extrae un mensaje de error legible desde cualquier tipo de error.
-   * Maneja OperationOutcome de FHIR, errores Axios y errores genéricos.
-   */
-  private extraerMensajeError(err: unknown): string {
-    if (!isAxiosError(err)) {
-      return err instanceof Error ? err.message : String(err);
-    }
+  /** Mensaje legible con TODOS los issues del OperationOutcome (antes solo el primero). */
+  static extraerMensajeError(err: unknown): string {
+    if (!isAxiosError(err)) return err instanceof Error ? err.message : String(err);
 
-    const data = err.response?.data;
-
-    // OperationOutcome de FHIR
-    if (data?.resourceType === 'OperationOutcome') {
-      const issue = data.issue?.[0];
-      const msg =
-        issue?.diagnostics ||
-        issue?.details?.text ||
-        'Error FHIR sin diagnóstico';
-      return `[OperationOutcome] ${msg}`;
-    }
-
-    // Error HTTP genérico
+    const data: any = err.response?.data;
     const status = err.response?.status;
-    const statusText = err.response?.statusText;
+
+    if (data?.resourceType === 'OperationOutcome' && Array.isArray(data.issue)) {
+      const issues = data.issue.map((i: any) => {
+        const txt = i?.diagnostics || i?.details?.text || i?.details?.coding?.[0]?.display || i?.code || 'sin diagnóstico';
+        const loc = Array.isArray(i?.location) && i.location.length ? ` @ ${i.location.join(', ')}` : (Array.isArray(i?.expression) && i.expression.length ? ` @ ${i.expression.join(', ')}` : '');
+        return `[${i?.severity ?? 'error'}] ${txt}${loc}`;
+      });
+      return `HTTP ${status} OperationOutcome: ${issues.join(' | ')}`.slice(0, 4000);
+    }
     if (status) {
-      return `HTTP ${status} ${statusText ?? ''} – ${JSON.stringify(data ?? {})}`;
+      return `HTTP ${status} ${err.response?.statusText ?? ''} – ${typeof data === 'string' ? data : JSON.stringify(data ?? {})}`.slice(0, 4000);
     }
-
-    // Sin respuesta (timeout, red caída)
-    if (err.request) {
-      return `Sin respuesta del servidor: ${err.message}`;
-    }
-
+    if (err.request) return `Sin respuesta del servidor: ${err.message}`;
     return err.message;
   }
 }

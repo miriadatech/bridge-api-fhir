@@ -25,9 +25,7 @@ export class MinisterioAuthService {
 
 
     const config = this.buildOAuthConfig(cliente);
-    console.log(config)
     const cached = this.tokenCache.get(cliente.id);
-    console.log(cached)
 
     if (cached && Date.now() < cached.expiresAt - this.REFRESH_MARGIN_MS) {
       return cached.accessToken;
@@ -71,6 +69,9 @@ export class MinisterioAuthService {
       clientSecret: cliente.ministry_client_secret,
       tenantId: cliente.ministry_tenant_id,
       scope: cliente.ministry_scope ?? 'openid',
+      tokenUrl: cliente.ministry_auth_url?.includes('/oauth2/')
+        ? cliente.ministry_auth_url
+        : `https://login.microsoftonline.com/${cliente.ministry_tenant_id}/oauth2/v2.0/token`,
     };
   }
 
@@ -79,14 +80,14 @@ export class MinisterioAuthService {
     config: OAuthConfig,
   ): Promise<string> {
     // Construir URL de token de Microsoft Azure AD
-    const tokenUrl = `https://login.microsoftonline.com/${config.tenantId}/oauth2/v2.0/token`;
+    const tokenUrl = config.tokenUrl;
 
     logger.debug(
       `[MinisterioAuth] Solicitando token para cliente ${clienteId} | URL: ${tokenUrl}`,
     );
 
     const params = new URLSearchParams({
-      grant_type: 'Client_Credentials',
+      grant_type: 'client_credentials',
       client_id: config.clientId,
       client_secret: config.clientSecret,
       scope: config.scope,
@@ -101,8 +102,6 @@ export class MinisterioAuthService {
     });
 
     const { access_token, expires_in } = response.data;
-
-    console.log('Token obtenido: ', access_token)
 
     if (!access_token) {
       throw new Error(

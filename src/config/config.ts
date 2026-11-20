@@ -1,6 +1,4 @@
-﻿import dotenv from 'dotenv';
-
-dotenv.config();
+﻿import './env';
 
 export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
@@ -8,8 +6,8 @@ export const config = {
   db: {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
-    user: process.env.DB_USER || 'bridge_user',
-    password: process.env.DB_PASSWORD || 'secure_password_123',
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME || 'SSH7Fhire',
     poolMin: parseInt(process.env.DB_POOL_MIN || '2', 10),
     poolMax: parseInt(process.env.DB_POOL_MAX || '10', 10),
@@ -25,7 +23,7 @@ export const config = {
     db: parseInt(process.env.REDIS_DB || '0', 10),
   },
   jwt: {
-    secret: process.env.JWT_SECRET || 'your_super_secret_jwt_key_change_this_in_production_12345',
+    secret: process.env.JWT_SECRET,
     expiration: process.env.JWT_EXPIRATION || '24h',
   },
 };

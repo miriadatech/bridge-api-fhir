@@ -3,12 +3,8 @@
 
 import { Request, Response } from 'express';
 import { RDAService } from '../services/RDAService';
-import {
-    RDAPatientStatementTranslator,
-    RDAPatientStatementInput,
-} from '../translators/RDAPatientStatementTranslator';
-import { tenant_local } from '../types/types';
-import saveRdaService from '../services/saveRDA.service';
+import { getTenant } from '../middleware/auth.middleware';
+import { rdaQueueService } from '../services/RdaQueueService';
 
 const rdaService = new RDAService();
 
@@ -92,62 +88,22 @@ export class RDAController {
         }
     };
 
-    // ─── POST /api/rda/translate ──────────────────────────────────────────────
+    // ─── POST /api/ehr/rda/translate (LEGADO — usar POST /api/rda/paciente) ─────
+    // Mantiene la respuesta original (el Bundle FHIR) pero ahora valida todo el JSON,
+    // toma la IPS del cliente autenticado (x-api-key) y no de tenant.id del body.
     translateDirect = async (req: Request, res: Response): Promise<void> => {
         try {
-            const input = req.body as RDAPatientStatementInput;
-            const tenant = req.body.tenant as tenant_local | undefined;
-            console.log("tenant", tenant);
-            console.log("input", input.patient);
-
-            // Validaciones mínimas
-            console.log(input.patient.identifier_value)
-            if (!input?.patient?.identifier_value) {
-                res.status(400).json({
-                    error: 'Campo requerido: patient.identifier_value',
-                });
+            const r = await rdaQueueService.enqueue(getTenant(req), 'paciente', req.body ?? {}, { includeBundle: true });
+            if (!r.ok) {
+                res.status(r.status === 422 ? 400 : r.status).json({ error: 'JSON inválido', detalles: r.body.errores ?? r.body });
                 return;
             }
-            if (!input?.patient?.given_name) {
-                res.status(400).json({
-                    error: 'Campo requerido: patient.given_name',
-                });
-                return;
-            }
-            if (!input?.tenant?.institution_code) {
-                res.status(400).json({
-                    error: 'Campo requerido: tenant.institution_code',
-                });
-                return;
-            }
-            if (!input?.practitioner?.doctor_name) {
-                res.status(400).json({
-                    error: 'Campo requerido: practitioner.doctor_name',
-                });
-                return;
-            }
-
-            // Arrays clínicos opcionales
-            input.conditions = input.conditions ?? [];
-            input.allergies = input.allergies ?? [];
-            input.familyHistory = input.familyHistory ?? [];
-            input.medications = input.medications ?? [];
-
-            // Método ESTÁTICO — correcto
-            const bundle = RDAPatientStatementTranslator.translate(input);
-
-            await saveRdaService.saveRdaRecibidas(input, tenant, bundle);
-
-            /* Se debe enviar a grabar el RDA para que quede pendiente para enviar al ministerio mediante un Worker */
-
-            res.status(200).json(bundle);
-
+            const envio: any = r.body.envio;
+            if (envio?.id) res.setHeader('X-RDA-Envio-Id', String(envio.id));
+            res.status(200).json(r.body.bundle ?? r.body);
         } catch (error: any) {
             console.error('[RDAController.translateDirect]', error);
-            res.status(500).json({
-                error: 'Error traduciendo RDA',
-                detail: error.message,
-            });
+            res.status(500).json({ error: 'Error traduciendo RDA', detail: error.message });
         }
     };
 }

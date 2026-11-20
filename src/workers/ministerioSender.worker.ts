@@ -1,12 +1,7 @@
 // src/workers/ministerioSender.worker.ts
 // Worker autónomo de envío de registros FHIR al Ministerio
 // Ejecutar con: npm run worker:dev  ó  npm run worker:start
-import 'dotenv/config';
-import path from 'path';
-import dotenv from 'dotenv';
-
-// Cargar .env desde src/.env (ruta relativa al proceso)
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+import '../config/env';
 
 import { Pool } from 'pg';
 import { workerConfig } from '../config/workerConfig';
@@ -16,6 +11,8 @@ import { ClienteRepository } from '../repositories/ClienteRepository';
 import { ClienteService } from '../services/ClienteService';
 import { MinisterioAuthService } from '../services/MinisterioAuthService';
 import { FhirSenderService } from '../services/FhirSenderService';
+import { TerminologyService } from '../services/TerminologyService';
+import { RDA_TYPES, resolveTipo, tipoFromBundle } from '../rda/rda.registry';
 import { RegistroFhir, ResumenEjecucion } from '../types/worker.types';
 import { PoolClient } from 'pg';
 
@@ -34,6 +31,13 @@ const clienteRepository = new ClienteRepository(pool);
 const clienteService    = new ClienteService(clienteRepository);
 const authService       = new MinisterioAuthService();
 const fhirSender        = new FhirSenderService(authService, workerConfig.timeoutAxiosMs);
+const terminology       = new TerminologyService(fhirSender);
+
+/** Operación del Ministerio según el tipo de RDA (tipo_evento o perfil de la Composition). */
+function resolverOperacion(registro: RegistroFhir): string | null {
+  const tipo = resolveTipo(registro.tipo_evento) ?? tipoFromBundle(registro.payload_fhir);
+  return tipo ? RDA_TYPES[tipo].operation : null;
+}
 
 // ─── Flag para evitar ejecuciones solapadas ──────────────────────────────────
 let ejecutando = false;
@@ -140,10 +144,37 @@ async function ejecutarCiclo(): Promise<void> {
 
       // ── Paso 6: Enviar cada registro del cliente ──────────────────────────
       for (const registro of registrosCliente) {
+        const operacion = resolverOperacion(registro);
+        if (!operacion) {
+          await fhirRepository.marcarError(
+            registro.id,
+            `No se pudo determinar el tipo de RDA (tipo_evento="${registro.tipo_evento}"). ` +
+              'Valores válidos: paciente | consulta | urgencias | hospitalizacion',
+            registro.intentos,
+            workerConfig.maxIntentos,
+            { definitivo: true },
+          );
+          resumen.errores++;
+          continue;
+        }
+
+        // Autocorrección opcional de displays con las terminologías oficiales
+        if (TerminologyService.enabled()) {
+          try {
+            const fixes = await terminology.fixDisplays(cliente, registro.payload_fhir);
+            if (fixes.length > 0) {
+              logger.info(`[Worker] #${registro.id} displays corregidos: ${fixes.join('; ')}`);
+            }
+          } catch (e) {
+            logger.warn(`[Worker] #${registro.id} no se pudo aplicar autocorrección de displays: ${(e as Error).message}`);
+          }
+        }
+
         const resultado = await fhirSender.enviar(
           registro.id,
           cliente,
           registro.payload_fhir,
+          operacion,
         );
 
         if (resultado.exitoso) {
@@ -164,13 +195,15 @@ async function ejecutarCiclo(): Promise<void> {
             resultado.error ?? 'Error desconocido',
             registro.intentos,
             workerConfig.maxIntentos,
+            { definitivo: resultado.reintentable === false, respuesta: resultado.respuesta },
           );
           resumen.errores++;
 
           const intentosUsados = registro.intentos + 1;
           logger.error(
-            `[Worker] ❌ #${registro.id} falló (intento ${intentosUsados}/${workerConfig.maxIntentos}) | ` +
-              `${resultado.error}`,
+            resultado.reintentable === false
+              ? `[Worker] ❌ #${registro.id} rechazado por el Ministerio (error de datos, no se reintenta) | ${resultado.error}`
+              : `[Worker] ❌ #${registro.id} falló (intento ${intentosUsados}/${workerConfig.maxIntentos}) | ${resultado.error}`,
           );
         }
       }

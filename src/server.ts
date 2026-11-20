@@ -1,47 +1,37 @@
 // src/server.ts
+import './config/env';
 import app from './app';
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log(`\n${'='.repeat(60)}`);
-    console.log(`🚀  Bridge API FHIR — Servidor iniciado`);
-    console.log(`${'='.repeat(60)}`);
-    console.log(`\n📡  URL:  http://localhost:${PORT}`);
+    const line = '='.repeat(64);
+    console.log(`\n${line}\n🚀  Bridge API FHIR — Servidor iniciado\n${line}`);
+    console.log(`📡  URL:  http://localhost:${PORT}`);
     console.log(`🌍  ENV:  ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🏥  MinSalud mode: ${process.env.MINISTRY_MODE || 'sandbox'}`);
+    console.log(`
+  🔓 Públicos
+     GET   /health
+     POST  /api/auth/register            (x-admin-key si ADMIN_API_KEY está definido)
 
-    console.log(`\n📋  ENDPOINTS DISPONIBLES:`);
+  🔑 Autenticados (header x-api-key: baf_...)
+     Cliente
+       GET   /api/auth/profile
+       PUT   /api/auth/ministry-credentials
+       POST  /api/auth/regenerate-key
 
-    console.log(`\n  🔓  PÚBLICOS (sin autenticación):`);
-    console.log(`     GET  /health`);
-    console.log(`     POST /api/auth/register`);
+     RDA  (tipo = paciente | consulta | urgencias | hospitalizacion)
+       GET   /api/rda/tipos
+       POST  /api/rda/:tipo/translate      → valida y devuelve el Bundle (no guarda)
+       POST  /api/rda/:tipo                → valida, traduce y encola para MinSalud
+       GET   /api/rda/envios               → listar (?estado=&tipo=&desde=&hasta=&page=)
+       GET   /api/rda/envios/resumen       → conteo por tipo/estado
+       GET   /api/rda/envios/:id           → estado + respuesta del Ministerio
+       PUT   /api/rda/envios/:id           → corregir JSON de un envío fallido
+       POST  /api/rda/envios/:id/reintentar
 
-    console.log(`\n  🔑  AUTENTICADOS (requiere: x-api-key: baf_...):`);
-
-    console.log(`\n     Auth:`);
-    console.log(`     POST  /api/auth/regenerate-key`);
-    console.log(`     PUT   /api/auth/ministry-credentials`);
-    console.log(`     GET   /api/auth/profile`);
-
-    console.log(`\n     Pacientes:`);
-    console.log(`     GET   /api/ehr/patients`);
-    console.log(`     POST  /api/ehr/patients`);
-    console.log(`     GET   /api/ehr/patients/identifier/:type/:value`);
-    console.log(`     GET   /api/ehr/patients/:id`);
-    console.log(`     PUT   /api/ehr/patients/:id`);
-    console.log(`     DELETE /api/ehr/patients/:id`);
-    console.log(`     POST  /api/ehr/patients/:id/sync`);
-
-    console.log(`\n     Consultas:`);
-    console.log(`     POST  /api/ehr/consultations`);
-    console.log(`     GET   /api/ehr/consultations/patient/:patientId`);
-    console.log(`     GET   /api/ehr/consultations/:id`);
-    console.log(`     PUT   /api/ehr/consultations/:id`);
-    console.log(`     DELETE /api/ehr/consultations/:id`);
-    console.log(`     POST  /api/ehr/consultations/:id/prescriptions`);
-    console.log(`     POST  /api/ehr/consultations/:id/lab-orders`);
-    console.log(`     PATCH /api/ehr/consultations/:id/lab-orders/:labOrderId/result`);
-
-    console.log(`\n${'='.repeat(60)}\n`);
+     Legado (compatibilidad)
+       POST  /api/ehr/rda/translate            (= /api/rda/paciente)
+       POST  /api/ehr/rda/ambulatory/translate (= /api/rda/consulta)
+${line}\n`);
 });

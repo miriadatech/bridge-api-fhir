@@ -32,7 +32,7 @@ export interface RegistroFhir {
   id: number;
   uuid_evento: string;
   ips_id: string;
-  historia_id: number;
+  historia_id: string | number | null;
   tipo_evento: string;
   payload_original: Record<string, unknown>;
   payload_fhir: Record<string, unknown>;
@@ -53,6 +53,10 @@ export interface ResultadoEnvio {
   ministerioId?: string;
   respuesta?: Record<string, unknown>;
   error?: string;
+  /** Código HTTP devuelto por el Ministerio (si hubo respuesta) */
+  httpStatus?: number;
+  /** false = error de datos (400/409/422…): no tiene sentido reintentar sin corregir el RDA */
+  reintentable?: boolean;
   duracionMs: number;
 }
 
@@ -71,6 +75,7 @@ export interface OAuthConfig {
   clientSecret: string;
   tenantId: string;   // ministry_tenant_id → https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token
   scope: string;
+  tokenUrl: string;
 }
 
 // ─── Token cacheado ──────────────────────────────────────────────────────────
