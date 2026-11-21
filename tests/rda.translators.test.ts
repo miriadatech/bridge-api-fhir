@@ -138,3 +138,72 @@ describe('Validación y referencias cruzadas', () => {
     expect(RDA_TYPES.hospitalizacion.operation).toBe('/Composition/$enviar-rda-hospitalizacion');
   });
 });
+
+describe('Patient – campos obligatorios del perfil PatientRDA', () => {
+  it.each(['nationality_code', 'ethnicity_code', 'disability_code', 'biological_gender_code'])('sin %s → error', (campo) => {
+    const input = load('rda-paciente.json'); delete input.patient[campo];
+    const r = validateAndTranslate('paciente', input);
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toContain(campo);
+  });
+  it.each(CASES)('%s: todas las codings del Patient llevan display', (tipo, file) => {
+    const b: any = validateAndTranslate(tipo, load(file)).bundle;
+    const pat = b.entry.find((e: any) => e.resource.resourceType === 'Patient').resource;
+    const sinDisplay: string[] = [];
+    const walk = (n: any, p: string) => {
+      if (Array.isArray(n)) n.forEach((x, i) => walk(x, `${p}[${i}]`));
+      else if (n && typeof n === 'object') {
+        if (n.system && n.code && !n.display) sinDisplay.push(`${p} (${n.system})`);
+        Object.entries(n).forEach(([k, v]) => walk(v, `${p}.${k}`));
+      }
+    };
+    walk(pat, 'Patient');
+    expect(sinDisplay).toEqual([]);
+  });
+});
+
+describe('Consulta – reglas del Ministerio (sandbox)', () => {
+  it('sin document_references → error', () => {
+    const i = load('rda-consulta.json'); delete i.document_references;
+    expect(validateAndTranslate('consulta', i).errors.join(' ')).toMatch(/document_references/);
+  });
+  it.each(['reason_code', 'frequency_code', 'frequency_value', 'dose_value', 'dose_unit_code', 'duration_days', 'route_code'])('fórmula sin %s → error', (k) => {
+    const i = load('rda-consulta.json'); delete i.medication_requests[0][k];
+    expect(validateAndTranslate('consulta', i).errors.join(' ')).toContain(k);
+  });
+  it('la fórmula lleva reasonCode, timing.code y doseAndRate; el soporte lleva content', () => {
+    const b: any = validateAndTranslate('consulta', load('rda-consulta.json')).bundle;
+    const mr = b.entry.find((e: any) => e.resource.resourceType === 'MedicationRequest').resource;
+    expect(mr.reasonCode).toHaveLength(1);
+    expect(mr.dosageInstruction[0].timing.code.coding[0].code).toBeTruthy();
+    expect(mr.dosageInstruction[0].doseAndRate).toHaveLength(1);
+    const dr = b.entry.find((e: any) => e.resource.resourceType === 'DocumentReference').resource;
+    expect(dr.content[0].attachment.data).toBeTruthy();
+  });
+});
+
+describe('DocumentReferenceEPIRDA – valores fijos del perfil', () => {
+  it.each([['consulta', 'rda-consulta.json'], ['urgencias', 'rda-urgencias.json'], ['hospitalizacion', 'rda-hospitalizacion.json']] as Array<[RdaTipo, string]>)('%s', (tipo, file) => {
+    const b: any = validateAndTranslate(tipo, load(file)).bundle;
+    const dr = b.entry.find((e: any) => e.resource.resourceType === 'DocumentReference').resource;
+    expect(dr.custodian.reference).toBe('Organization/MinSalud');
+    expect(dr.type.coding.map((c: any) => c.code)).toEqual(['18842-5', 'EPI']);
+    expect(dr.description).toBe('Epicrisis del encuentro de atención en salud - RDA');
+    expect(dr.content[0].format.code).toBe('application/pdf');
+    expect(dr.context.encounter[0].reference).toBe('#Encounter-0');
+  });
+});
+
+describe('MedicationRequestRDA – slices de doseAndRate', () => {
+  it('slice UMM con rate MedicationTime; soporte sin contentType y securityLabel restricted', () => {
+    const b: any = validateAndTranslate('consulta', load('rda-consulta.json')).bundle;
+    const mr = b.entry.find((e: any) => e.resource.resourceType === 'MedicationRequest').resource;
+    const dr0 = mr.dosageInstruction[0].doseAndRate[0];
+    expect(dr0.doseQuantity.system).toBe('https://fhir.minsalud.gov.co/rda/CodeSystem/UMM');
+    expect(dr0.rateQuantity.system).toBe('https://fhir.minsalud.gov.co/rda/CodeSystem/MedicationTime');
+    expect(dr0.rateQuantity.value).toBe(8);
+    const doc = b.entry.find((e: any) => e.resource.resourceType === 'DocumentReference').resource;
+    expect(doc.content[0].attachment.contentType).toBeUndefined();
+    expect(doc.securityLabel[0].coding[0].display).toBe('restricted');
+  });
+});

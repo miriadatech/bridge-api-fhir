@@ -13,7 +13,11 @@
     "address_city": "Bogotá D.C.",
     "divipola_code": "11001",
     "residence_zone_code": "01",
-    "nationality_code": "170"
+    "nationality_code": "170",
+    "ethnicity_code": "6",
+    "ethnicity_display": "Otras etnias",
+    "disability_code": "REEMPLAZAR_CON_CODIGO_OFICIAL",
+    "biological_gender_code": "REEMPLAZAR_CON_CODIGO_OFICIAL"
   },
   "tenant": {
     "institution_code": "4443000277",
@@ -108,7 +112,12 @@
       "route_display": "ORAL",
       "dispense_quantity_value": 15,
       "dispense_quantity_unit": "tabletas",
-      "reason_condition_id": "1"
+      "reason_condition_id": "1",
+      "reason_code": "REEMPLAZAR_CON_CODIGO_OFICIAL",
+      "frequency_code": "REEMPLAZAR_CON_CODIGO_OFICIAL",
+      "dose_value": 500,
+      "dose_unit_code": "REEMPLAZAR_CON_CODIGO_UMM",
+      "frequency_value": 8
     }
   ],
   "procedures": [
@@ -162,7 +171,8 @@
       "loinc_display": "Discharge summary",
       "doc_type_code": "EPI",
       "doc_type_display": "Epicrisis",
-      "description": "Epicrisis de hospitalización"
+      "description": "Epicrisis de hospitalización",
+      "pdf_base64": "JVBERi0xLjQKJSBlamVtcGxvCg=="
     }
   ]
 }

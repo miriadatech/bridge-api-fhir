@@ -145,15 +145,34 @@ export class RdaQueueService {
     }
 
     /** Vuelve a poner en cola un envío fallido (ERROR o REINTENTANDO), reiniciando los intentos. */
-    async retry(ipsId: string, id: string) {
+    async retry(tenant: AuthTenant, id: string): Promise<EnqueueResult> {
+        const current = await this.get(tenant.id, id, true);
+        if (!current || !['ERROR', 'REINTENTANDO'].includes(current.estado)) {
+            return { ok: false, status: 409, body: { success: false, error: 'Solo se pueden reintentar envíos en estado ERROR o REINTENTANDO (o el envío no existe)' } };
+        }
+        // Se vuelve a traducir desde el JSON original para aplicar la configuración ACTUAL del
+        // cliente (p. ej. codigo_habilitacion corregido) y las correcciones del traductor.
+        let bundle = current.payload_fhir;
+        let warnings: string[] = [];
+        const tipo = current.tipo_evento as RdaTipo;
+        if (RDA_TYPES[tipo] && current.payload_original) {
+            const input = typeof current.payload_original === 'string' ? JSON.parse(current.payload_original) : current.payload_original;
+            warnings = this.applyTenant(input, tenant);
+            const result = validateAndTranslate(tipo, input);
+            if (!result.ok) return { ok: false, status: 422, body: { success: false, tipo, errores: result.errors } };
+            bundle = result.bundle;
+        }
         const r = await pool.query(
             `UPDATE interoperabilidad_recibida
-                SET estado = 'REINTENTANDO', intentos = 0, ultimo_error = NULL, updated_at = NOW()
-              WHERE ips_id = $1 AND (id::text = $2 OR uuid_evento = $2) AND estado IN ('ERROR', 'REINTENTANDO')
+                SET payload_fhir = $3, estado = 'REINTENTANDO', intentos = 0, ultimo_error = NULL, updated_at = NOW()
+              WHERE ips_id = $1 AND id = $2
           RETURNING ${LIST_COLUMNS}`,
-            [ipsId, id],
+            [tenant.id, current.id, JSON.stringify(bundle)],
         );
-        return r.rows[0] ?? null;
+        return {
+            ok: true, status: 200,
+            body: { success: true, mensaje: 'Envío re-traducido y re-encolado', data: r.rows[0], ...(warnings.length > 0 && { advertencias: warnings }) },
+        };
     }
 
     /**

@@ -113,12 +113,8 @@ export const rdaUnifiedController = {
 
     // POST /api/rda/envios/:id/reintentar
     retry: handle(async (req, res) => {
-        const row = await rdaQueueService.retry(getTenant(req).id, req.params.id);
-        if (!row) {
-            res.status(409).json({ success: false, error: 'Solo se pueden reintentar envíos en estado ERROR o REINTENTANDO (o el envío no existe)' });
-            return;
-        }
-        res.json({ success: true, mensaje: 'Envío re-encolado', data: row });
+        const r = await rdaQueueService.retry(getTenant(req), req.params.id);
+        res.status(r.status).json(r.body);
     }),
 
     // PUT /api/rda/envios/:id  → corrige el JSON de un envío fallido y lo re-encola

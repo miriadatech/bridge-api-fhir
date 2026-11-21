@@ -13,7 +13,11 @@
     "address_city": "Bogotá D.C.",
     "divipola_code": "11001",
     "residence_zone_code": "01",
-    "nationality_code": "170"
+    "nationality_code": "170",
+    "ethnicity_code": "6",
+    "ethnicity_display": "Otras etnias",
+    "disability_code": "REEMPLAZAR_CON_CODIGO_OFICIAL",
+    "biological_gender_code": "REEMPLAZAR_CON_CODIGO_OFICIAL"
   },
   "tenant": {
     "institution_code": "4443000277",
@@ -39,38 +43,125 @@
     "discharge_deceased_status_code": "01"
   },
   "payers": [
-    { "eapb_code": "EPS037", "name": "EPS Ejemplo" }
+    {
+      "eapb_code": "EPS037",
+      "name": "EPS Ejemplo"
+    }
   ],
-  "triage": { "code": "03", "datetime": "2026-11-19T10:05:00-05:00" },
+  "triage": {
+    "code": "03",
+    "datetime": "2026-11-19T10:05:00-05:00"
+  },
   "diagnoses": [
-    { "id": "0", "role": "ingreso", "condition_code": "S934", "condition_display": "ESGUINCES Y TORCEDURAS DEL TOBILLO", "diagnosis_type_code": "01" },
-    { "id": "1", "role": "egreso",  "condition_code": "S934", "condition_display": "ESGUINCES Y TORCEDURAS DEL TOBILLO", "diagnosis_type_code": "02" }
+    {
+      "id": "0",
+      "role": "ingreso",
+      "condition_code": "S934",
+      "condition_display": "ESGUINCES Y TORCEDURAS DEL TOBILLO",
+      "diagnosis_type_code": "01"
+    },
+    {
+      "id": "1",
+      "role": "egreso",
+      "condition_code": "S934",
+      "condition_display": "ESGUINCES Y TORCEDURAS DEL TOBILLO",
+      "diagnosis_type_code": "02"
+    }
   ],
   "allergies": [
-    { "id": "0", "allergen": "Penicilina", "allergen_type_code": "01", "allergen_type_display": "Medicamento", "status": "active" }
+    {
+      "id": "0",
+      "allergen": "Penicilina",
+      "allergen_type_code": "01",
+      "allergen_type_display": "Medicamento",
+      "status": "active"
+    }
   ],
   "medication_admin_requests": [
-    { "id": "0", "medication_code": "626", "medication_display": "PARACETAMOL", "authored_on": "2026-11-19T10:20:00-05:00",
-      "dosage_text": "1 g IV dosis única", "route_code": "042", "route_display": "INTRAVENOSA" }
+    {
+      "id": "0",
+      "medication_code": "626",
+      "medication_display": "PARACETAMOL",
+      "authored_on": "2026-11-19T10:20:00-05:00",
+      "dosage_text": "1 g IV dosis única",
+      "route_code": "042",
+      "route_display": "INTRAVENOSA"
+    }
   ],
   "medication_administrations": [
-    { "id": "0", "request_id": "0", "medication_code": "626", "medication_display": "PARACETAMOL",
-      "effective_start": "2026-11-19T10:30:00-05:00", "dose_value": 1, "dose_unit": "g" }
+    {
+      "id": "0",
+      "request_id": "0",
+      "medication_code": "626",
+      "medication_display": "PARACETAMOL",
+      "effective_start": "2026-11-19T10:30:00-05:00",
+      "dose_value": 1,
+      "dose_unit": "g"
+    }
   ],
   "medication_requests": [
-    { "id": "0", "medication_code": "626", "medication_display": "PARACETAMOL", "prescription_number": "RX-000-123",
-      "dosage_text": "500 mg cada 8 horas por 5 días", "duration_days": 5, "route_code": "048", "route_display": "ORAL",
-      "dispense_quantity_value": 15, "dispense_quantity_unit": "tabletas", "reason_condition_id": "1" }
+    {
+      "id": "0",
+      "medication_code": "626",
+      "medication_display": "PARACETAMOL",
+      "prescription_number": "RX-000-123",
+      "dosage_text": "500 mg cada 8 horas por 5 días",
+      "duration_days": 5,
+      "route_code": "048",
+      "route_display": "ORAL",
+      "dispense_quantity_value": 15,
+      "dispense_quantity_unit": "tabletas",
+      "reason_condition_id": "1",
+      "reason_code": "REEMPLAZAR_CON_CODIGO_OFICIAL",
+      "frequency_code": "REEMPLAZAR_CON_CODIGO_OFICIAL",
+      "dose_value": 500,
+      "dose_unit_code": "REEMPLAZAR_CON_CODIGO_UMM",
+      "frequency_value": 8
+    }
   ],
   "procedures": [
-    { "id": "0", "cups_code": "873420", "cups_display": "RADIOGRAFIA DE TOBILLO", "performed_datetime": "2026-11-19T11:00:00-05:00",
-      "reason_code": "15", "reason_display": "DIAGNOSTICO", "main_condition_id": "0", "related_condition_id": "1" }
+    {
+      "id": "0",
+      "cups_code": "873420",
+      "cups_display": "RADIOGRAFIA DE TOBILLO",
+      "performed_datetime": "2026-11-19T11:00:00-05:00",
+      "reason_code": "15",
+      "reason_display": "DIAGNOSTICO",
+      "main_condition_id": "0",
+      "related_condition_id": "1"
+    }
   ],
   "procedure_results": [
-    { "id": "0", "procedure_id": "0", "cups_code": "873420", "cups_display": "RADIOGRAFIA DE TOBILLO",
+    {
+      "id": "0",
+      "procedure_id": "0",
+      "cups_code": "873420",
+      "cups_display": "RADIOGRAFIA DE TOBILLO",
       "effective_datetime": "2026-11-19T11:30:00-05:00",
-      "components": [ { "name": "Hallazgo", "value_string": "Sin evidencia de fractura" } ] }
+      "components": [
+        {
+          "name": "Hallazgo",
+          "value_string": "Sin evidencia de fractura"
+        }
+      ]
+    }
   ],
-  "incapacidad": { "scope_code": "01", "scope_display": "Nueva", "days": 3 },
-  "ocupacion": { "occupation_code": "3121", "occupation_display": "Analistas de sistemas informáticos" }
+  "incapacidad": {
+    "scope_code": "01",
+    "scope_display": "Nueva",
+    "days": 3
+  },
+  "ocupacion": {
+    "occupation_code": "3121",
+    "occupation_display": "Analistas de sistemas informáticos"
+  },
+  "document_references": [
+    {
+      "id": "0",
+      "loinc_code": "18842-5",
+      "loinc_display": "Discharge summary",
+      "description": "Soporte de la atención",
+      "pdf_base64": "JVBERi0xLjQKJSBlamVtcGxvCg=="
+    }
+  ]
 }

@@ -153,6 +153,7 @@ export const KNOWN_DISPLAYS: Record<string, Record<string, string>> = {
         '02': 'Confirmado Nuevo',
     },
     [CS.COL_PERSON_ID]: { CC: 'Cédula ciudadanía' },
+    [CS.COL_ETHNICITY]: { '6': 'Otras etnias' },
 };
 
 export function display(system: string, code: string, provided?: string): string {
@@ -316,6 +317,10 @@ export interface MedicationRequestInput {
     dose_value?: number;
     dose_unit?: string;
     dose_unit_code?: string;
+    frequency_value?: number;
+    dose_form_code?: string;
+    dose_form_display?: string;
+    dose_form_quantity?: number;
     dispense_quantity_value?: number;
     dispense_quantity_unit?: string;
     dispense_unit_code?: string;
@@ -410,8 +415,10 @@ export interface DocumentReferenceInput {
     doc_type_display?: string;
     date?: string;
     description?: string;
-    /** PDF de epicrisis en base64 (opcional) */
+    /** PDF del documento en base64 */
     pdf_base64?: string;
+    /** O bien, URL donde está el documento */
+    url?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -501,10 +508,10 @@ export function buildPatient(p: PatientInput): Record<string, unknown> {
             }),
             city: p.address_city ?? '',
             ...(p.divipola_code && {
-                _city: { extension: [{ url: EXT.DIVIPOLA_MUNICIPALITY, valueCoding: { system: CS.DIVIPOLA, code: p.divipola_code } }] },
+                _city: { extension: [{ url: EXT.DIVIPOLA_MUNICIPALITY, valueCoding: { system: CS.DIVIPOLA, code: p.divipola_code, display: p.address_city || p.divipola_code } }] },
             }),
             country: 'Colombia',
-            _country: { extension: [{ url: EXT.COUNTRY_CODE, valueCoding: { system: CS.ISO_3166_1, code: '170' } }] },
+            _country: { extension: [{ url: EXT.COUNTRY_CODE, valueCoding: { system: CS.ISO_3166_1, code: '170', display: 'Colombia' } }] },
         }];
     }
     return resource;
@@ -659,6 +666,39 @@ function medicationCC(code: string | undefined, disp: string, sys?: 'MipresINN' 
     return { coding: [{ system, code, display: disp }], text: disp };
 }
 
+/**
+ * Slices cerrados de MedicationRequestRDA.dosageInstruction.doseAndRate:
+ *  - UMM: doseQuantity (system UMM, value+code) + rateQuantity (system MedicationTime): "500 mg cada 8 horas"
+ *  - MipresDoseForm: doseQuantity (system MipresDoseForm): "1 tableta"
+ */
+export function buildDoseAndRate(m: {
+    dose_value?: number; dose_unit?: string; dose_unit_code?: string;
+    frequency_value?: number; frequency_code?: string; frequency_display?: string;
+    dose_form_code?: string; dose_form_display?: string; dose_form_quantity?: number;
+}): object[] {
+    const out: object[] = [];
+    if (m.dose_value !== undefined && m.dose_unit_code) {
+        out.push({
+            doseQuantity: clean({ value: m.dose_value, unit: m.dose_unit, system: CS.UMM, code: m.dose_unit_code }),
+            rateQuantity: clean({
+                value: m.frequency_value ?? 1,
+                unit: m.frequency_display,
+                system: CS.MEDICATION_TIME,
+                code: m.frequency_code,
+            }),
+        });
+    }
+    if (m.dose_form_code) {
+        out.push({
+            doseQuantity: clean({
+                value: m.dose_form_quantity ?? 1, unit: m.dose_form_display,
+                system: `${BASE}/CodeSystem/MipresDoseForm`, code: m.dose_form_code,
+            }),
+        });
+    }
+    return out;
+}
+
 function dosageOf(m: MedicationRequestInput): Record<string, unknown> | undefined {
     const d = clean({
         text: m.dosage_text,
@@ -671,14 +711,7 @@ function dosageOf(m: MedicationRequestInput): Record<string, unknown> | undefine
             code: m.frequency_code ? cc(CS.MEDICATION_TIME, m.frequency_code, m.frequency_display) : undefined,
         }) : undefined,
         route: m.route_code ? cc(CS.VAD, m.route_code, m.route_display) : undefined,
-        doseAndRate: m.dose_value !== undefined ? [{
-            doseQuantity: clean({
-                value: m.dose_value,
-                unit: m.dose_unit,
-                system: m.dose_unit_code ? CS.UMM : undefined,
-                code: m.dose_unit_code,
-            }),
-        }] : undefined,
+        doseAndRate: (() => { const d = buildDoseAndRate(m); return d.length ? d : undefined; })(),
     });
     return Object.keys(d).length > 0 ? d : undefined;
 }
@@ -866,25 +899,51 @@ export function buildOcupacion(o: OcupacionInput, pRef: string, encRef: string):
     };
 }
 
-export function buildDocumentReference(d: DocumentReferenceInput, pRef: string, orgRef: string): Record<string, unknown> {
-    const typeCoding: object[] = [];
-    if (d.loinc_code) typeCoding.push({ system: CS.LOINC, code: d.loinc_code, display: d.loinc_display ?? d.loinc_code });
-    if (d.doc_type_code) typeCoding.push({ system: CS.COL_DOC_TYPES, code: d.doc_type_code, display: d.doc_type_display ?? d.doc_type_code });
+/**
+ * DocumentReferenceEPIRDA (epicrisis de soporte). Valores fijos del perfil oficial:
+ *  - custodian.reference = "Organization/MinSalud" (patrón requerido; NO es la IPS)
+ *  - type = LOINC 18842-5 "Discharge summary" + ColombianDocumentTypes EPI "Epicrisis"
+ *  - description = "Epicrisis del encuentro de atención en salud - RDA"
+ *  - content.format = urn:ietf:bcp:13 application/pdf
+ *  - context.encounter = encuentro del RDA
+ */
+export function buildDocumentReference(d: DocumentReferenceInput, pRef: string, orgRef: string, encRef?: string): Record<string, unknown> {
     return clean({
         resourceType: 'DocumentReference',
         id: `DocumentReference-${d.id}`,
         meta: { profile: [PROFILES.DOCUMENT_REFERENCE] },
         status: 'current',
-        type: { coding: typeCoding.length > 0 ? typeCoding : [{ system: CS.LOINC, code: '18842-5', display: 'Discharge summary' }] },
+        type: {
+            coding: [
+                { system: CS.LOINC, code: '18842-5', display: 'Discharge summary' },
+                { system: CS.COL_DOC_TYPES, code: 'EPI', display: 'Epicrisis' },
+            ],
+        },
         category: [{ coding: [{ system: CS.LOINC, code: '55108-5', display: 'Clinical presentation Document' }] }],
         subject: { reference: pRef },
-        date: d.date ?? nowISO(),
+        date: toInstant(d.date),
         author: [{ reference: orgRef }],
-        custodian: { reference: orgRef },
-        description: d.description ?? 'Documento de soporte RDA',
-        securityLabel: [{ coding: [{ system: CS.CONFIDENTIALITY, code: 'N', display: 'Normal' }] }],
-        content: d.pdf_base64 ? [{ attachment: { contentType: 'application/pdf', data: d.pdf_base64 } }] : undefined,
+        custodian: { reference: 'Organization/MinSalud' },
+        description: 'Epicrisis del encuentro de atención en salud - RDA',
+        securityLabel: [{ coding: [{ system: CS.CONFIDENTIALITY, code: 'R', display: 'restricted' }] }],
+        content: [{
+            // attachment.contentType está prohibido (0..0): el formato va en content.format
+            attachment: clean({
+                data: d.pdf_base64, url: d.url,
+                title: d.description,
+                creation: d.date,
+            }),
+            format: { system: 'urn:ietf:bcp:13', code: 'application/pdf', display: 'PDF' },
+        }],
+        context: encRef ? { encounter: [{ reference: encRef }] } : undefined,
     });
+}
+
+/** instant FHIR: fecha-hora completa con zona horaria */
+export function toInstant(v?: string): string {
+    if (!v) return nowISO();
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? nowISO() : (/[zZ]|[+-]\d{2}:\d{2}$/.test(v) && v.includes('T') ? v : d.toISOString());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

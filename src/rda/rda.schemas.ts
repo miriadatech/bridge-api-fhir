@@ -24,6 +24,12 @@ export const patientSchema = Joi.object({
     gender: code.required(),
     birth_date: isoDate.required(),
     birth_time: Joi.string().pattern(/^\d{2}:\d{2}(:\d{2})?$/).allow(null),
+    // Obligatorios en el perfil PatientRDA (el Ministerio rechaza sin ellos)
+    nationality_code: code.required().messages({ 'any.required': 'patient.nationality_code es obligatorio (ISO 3166-1 numérico, Colombia = 170)' }),
+    ethnicity_code: code.required().messages({ 'any.required': 'patient.ethnicity_code es obligatorio (CodeSystem ColombianEthnicGroup, ej. 6 = Otras etnias)' }),
+    disability_code: code.required().messages({ 'any.required': 'patient.disability_code es obligatorio (CodeSystem ColombianDisabilityClassification; consulte GET /api/rda/catalogos/ColombianDisabilityClassification)' }),
+    biological_gender_code: code.required().messages({ 'any.required': 'patient.biological_gender_code es obligatorio (sexo biológico, CodeSystem ColombianGenderGroup; consulte GET /api/rda/catalogos/ColombianGenderGroup)' }),
+    residence_zone_code: Joi.string().valid('01', '02').messages({ 'any.only': 'patient.residence_zone_code debe ser 01 (Urbana) o 02 (Rural)' }),
 }).or('father_family_name', 'family_name').unknown(true);
 
 export const tenantSchema = Joi.object({
@@ -45,11 +51,34 @@ const conditionBase = {
     condition_display: code.required(),
 };
 
+// Orden de administración intrahospitalaria (MedicationAdminRequestRDA)
 const medicationRequest = Joi.object({
     id,
     medication_display: code.required(),
     medication_system: Joi.string().valid('MipresINN', 'IUMPrimerNivel'),
 }).unknown(true);
+
+// Fórmula médica (MedicationRequestRDA): el Ministerio exige finalidad, frecuencia y dosis
+const prescription = medicationRequest.keys({
+    reason_code: code.required().messages({ 'any.required': 'medication_requests[].reason_code es obligatorio (finalidad, CodeSystem RIPSFinalidadConsultaVersion2)' }),
+    frequency_code: code.required().messages({ 'any.required': 'medication_requests[].frequency_code es obligatorio (unidad de la frecuencia, CodeSystem MedicationTime, ej. 2 = Horas)' }),
+    frequency_value: Joi.number().positive().required().messages({ 'any.required': 'medication_requests[].frequency_value es obligatorio (cada cuánto: ej. 8 con frequency_code 2 = cada 8 horas)' }),
+    dose_value: Joi.number().positive().required().messages({ 'any.required': 'medication_requests[].dose_value es obligatorio (cantidad por dosis, ej. 500)' }),
+    dose_unit_code: code.required().messages({ 'any.required': 'medication_requests[].dose_unit_code es obligatorio (unidad de medida, CodeSystem UMM; consulte GET /api/rda/catalogos/UMM)' }),
+    duration_days: Joi.number().positive().required().messages({ 'any.required': 'medication_requests[].duration_days es obligatorio (duración del tratamiento en días)' }),
+    route_code: code.required().messages({ 'any.required': 'medication_requests[].route_code es obligatorio (vía de administración, CodeSystem VAD)' }),
+});
+
+// Documento de soporte (la sección "Documentos de soporte" no admite emptyReason)
+const documentReferences = Joi.array().min(1).items(Joi.object({
+    id,
+    pdf_base64: Joi.string(),
+    url: Joi.string().uri(),
+}).or('pdf_base64', 'url').messages({ 'object.missing': 'document_references[] debe traer pdf_base64 o url' }).unknown(true)).required()
+    .messages({
+        'any.required': 'document_references es obligatorio: al menos un documento de soporte (PDF de la atención) con pdf_base64 o url',
+        'array.min': 'document_references debe tener al menos un documento de soporte',
+    });
 
 // ─── RDA Paciente ────────────────────────────────────────────────────────────
 export const pacienteSchema = Joi.object({
@@ -76,7 +105,8 @@ export const consultaSchema = Joi.object({
         period_end: isoDateTime,
     }).unknown(true).required(),
     conditions: Joi.array().items(Joi.object(conditionBase).unknown(true)),
-    medication_requests: Joi.array().items(medicationRequest),
+    medication_requests: Joi.array().items(prescription),
+    document_references: documentReferences,
 }).unknown(true);
 
 // ─── RDA Urgencias / Hospitalización ─────────────────────────────────────────
@@ -117,7 +147,8 @@ function encounterRdaSchema(kind: 'urgencias' | 'hospitalizacion') {
             }).unknown(true).required()
             : Joi.any(),
         medication_admin_requests: Joi.array().items(medicationRequest),
-        medication_requests: Joi.array().items(medicationRequest),
+        medication_requests: Joi.array().items(prescription),
+        document_references: documentReferences,
         medication_administrations: Joi.array().items(Joi.object({
             id, medication_display: code.required(), effective_start: isoDateTime.required(),
         }).unknown(true)),

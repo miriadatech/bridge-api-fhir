@@ -26,7 +26,7 @@ También se aceptan alias: `ambulatorio`, `consulta-externa`, `urgencia`, `inter
 ```bash
 npm install
 cp .env.example .env          # completar DB_*, ADMIN_API_KEY, WORKER_*
-psql -h HOST -U USER -d DB -f database/migrations/002_interoperabilidad_rda.sql
+npm run migrate               # aplica 002_interoperabilidad_rda.sql con la conexión del .env (no requiere psql)
 npm run build
 
 npm start                     # API (puerto PORT, por defecto 3000)
@@ -149,6 +149,13 @@ Ejemplos completos y probados en `examples/`:
 
 ### 5.3 RDA Consulta Externa
 `encounter` (`encounter_id`, `period_start`, `period_end`, `tech_modality_code`, `service_group_code`, `reps_service_code`, `care_setting_code`, `cups_service_code`, `external_cause_code`, `discharge_disposition_code`), `payment_source` (`id` = código EAPB, `name`), `conditions[]` (+ `diagnosis_type_code`, `diagnosis_role_code`, `rank`), `allergies[]`, `risk_factors[]`, `medication_requests[]`, `service_requests[]`, `incapacidad`, `ocupacion`, `document_references[]`.
+
+**Obligatorios adicionales (exigidos por el Ministerio en sandbox):**
+- `medication_requests[]` (fórmula): `reason_code` (RIPSFinalidadConsultaVersion2), `frequency_code` (MedicationTime), `dose_value` y `dose_unit`.
+- `document_references[]`: al menos un documento de soporte (PDF de la atención) con `pdf_base64` o `url`. Aplica también a Urgencias y Hospitalización.
+- `patient`: `nationality_code`, `ethnicity_code`, `disability_code`, `biological_gender_code` (todos los tipos).
+
+Consulte los códigos válidos con `GET /api/rda/catalogos/{CodeSystem}` (ej. `MedicationTime`, `RIPSFinalidadConsultaVersion2`, `ColombianDisabilityClassification`).
 
 ### 5.4 RDA Urgencias y Hospitalización (nuevos)
 

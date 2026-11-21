@@ -262,7 +262,7 @@ export class RDAEncounterTranslator {
         const procRes = procedures.map(p => buildProcedure(p, ctx));
         const resultRes = results.map(r => buildProcedureResult(r, ctx));
         const serviceRes = services.map(s => buildServiceRequest(s, ctx));
-        const docRes = docs.map(d => buildDocumentReference(d, pRef, oRef));
+        const docRes = docs.map(d => buildDocumentReference(d, pRef, oRef, encRef));
         const payerRes = payers.map(buildPayer).filter((p): p is Record<string, unknown> => p !== null);
         const triageRes = input.triage ? buildTriage(input.triage, pRef, encRef) : null;
         const incapRes = input.incapacidad ? buildIncapacidad(input.incapacidad, pRef, encRef) : null;

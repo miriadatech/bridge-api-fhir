@@ -12,9 +12,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "migrate": "node scripts/migrate.js",
-    "check-db": "node scripts/check-db.js",
     "lint": "eslint src/**/*.ts",
-    "format": "prettier --write \"src/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\"",
+    "check-db": "node scripts/check-db.js"
   },
   "keywords": [
     "FHIR",

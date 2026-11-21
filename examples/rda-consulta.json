@@ -13,7 +13,11 @@
     "address_city": "Bogotá D.C.",
     "divipola_code": "11001",
     "residence_zone_code": "01",
-    "nationality_code": "170"
+    "nationality_code": "170",
+    "ethnicity_code": "6",
+    "ethnicity_display": "Otras etnias",
+    "disability_code": "REEMPLAZAR_CON_CODIGO_OFICIAL",
+    "biological_gender_code": "REEMPLAZAR_CON_CODIGO_OFICIAL"
   },
   "tenant": {
     "institution_code": "4443000277",
@@ -68,12 +72,26 @@
       "duration_days": 3,
       "route_code": "048",
       "route_display": "ORAL",
-      "reason_condition_id": "0"
+      "reason_condition_id": "0",
+      "reason_code": "REEMPLAZAR_CON_CODIGO_OFICIAL",
+      "frequency_code": "REEMPLAZAR_CON_CODIGO_OFICIAL",
+      "dose_value": 500,
+      "dose_unit_code": "REEMPLAZAR_CON_CODIGO_UMM",
+      "frequency_value": 8
     }
   ],
   "service_requests": [],
   "ocupacion": {
     "occupation_code": "3121",
     "occupation_display": "Analistas de sistemas informáticos"
-  }
+  },
+  "document_references": [
+    {
+      "id": "0",
+      "loinc_code": "18842-5",
+      "loinc_display": "Discharge summary",
+      "description": "Soporte de la atención",
+      "pdf_base64": "JVBERi0xLjQKJSBlamVtcGxvCg=="
+    }
+  ]
 }

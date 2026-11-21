@@ -13,7 +13,11 @@
     "address_city": "Bogotá D.C.",
     "divipola_code": "11001",
     "residence_zone_code": "01",
-    "nationality_code": "170"
+    "nationality_code": "170",
+    "ethnicity_code": "6",
+    "ethnicity_display": "Otras etnias",
+    "disability_code": "REEMPLAZAR_CON_CODIGO_OFICIAL",
+    "biological_gender_code": "REEMPLAZAR_CON_CODIGO_OFICIAL"
   },
   "tenant": {
     "institution_code": "4443000277",

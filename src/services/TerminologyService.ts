@@ -16,6 +16,15 @@ import { logger } from '../utils/logger';
 
 const MINSALUD_CS_PREFIX = 'https://fhir.minsalud.gov.co/rda/CodeSystem/';
 
+/**
+ * Catálogos clínicos: si el display no coincide, lo más probable es que el CÓDIGO esté mal
+ * (ej. código de otro medicamento). Reescribir el display cambiaría el significado clínico,
+ * así que en estos solo se advierte y se deja que el Ministerio rechace para que el HIS corrija.
+ */
+const CLINICAL_CODE_SYSTEMS = new Set([
+    'MipresINN', 'IUMPrimerNivel', 'CUMS', 'CUPS', 'ATC', 'ICD10', 'CIE10', 'icd-10',
+]);
+
 interface CacheEntry { expiresAt: number; displays: Map<string, string> | null }
 
 export class TerminologyService {
@@ -40,6 +49,12 @@ export class TerminologyService {
         if (this.extraSystems[system]) return this.extraSystems[system];
         if (system.startsWith(MINSALUD_CS_PREFIX)) return system.slice(MINSALUD_CS_PREFIX.length);
         return null;
+    }
+
+    /** Lista los códigos de un CodeSystem del Ministerio (con caché). null si no se pudo obtener. */
+    async listar(cliente: ClienteCredenciales, csId: string): Promise<Array<{ code: string; display: string }> | null> {
+        const map = await this.load(cliente, csId);
+        return map ? Array.from(map, ([code, display]) => ({ code, display })) : null;
     }
 
     private async load(cliente: ClienteCredenciales, csId: string): Promise<Map<string, string> | null> {
@@ -81,7 +96,8 @@ export class TerminologyService {
             if (Array.isArray(node)) { node.forEach(walk); return; }
             if (node && typeof node === 'object') {
                 const o = node as Record<string, any>;
-                if (typeof o.system === 'string' && typeof o.code === 'string' && 'display' in o) codings.push(o as any);
+                // Coding = system + code (los Quantity también tienen system/code pero llevan value/unit: se excluyen)
+                if (typeof o.system === 'string' && typeof o.code === 'string' && !('value' in o) && !('unit' in o)) codings.push(o as any);
                 Object.values(o).forEach(walk);
             }
         };
@@ -93,7 +109,19 @@ export class TerminologyService {
             if (!id) continue;
             const map = await this.load(cliente, id);
             const official = map?.get(c.code);
+            if (official && !c.display) {
+                fixes.push(`${id}|${c.code}: (sin display) → "${official}"`);
+                c.display = official;
+                continue;
+            }
             if (official && official !== c.display) {
+                if (CLINICAL_CODE_SYSTEMS.has(id) || c.system === 'http://hl7.org/fhir/sid/icd-10') {
+                    logger.warn(
+                        `[Terminology] ⚠️ ${id}|${c.code}: el HIS envió "${c.display}" pero ese código corresponde a ` +
+                        `"${official}". No se corrige (catálogo clínico): verifique el código en el HIS.`,
+                    );
+                    continue;
+                }
                 fixes.push(`${id}|${c.code}: "${c.display}" → "${official}"`);
                 c.display = official;
             }

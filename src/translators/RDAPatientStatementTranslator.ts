@@ -1,3 +1,4 @@
+import { display as knownDisplay } from './rda/common';
 // src/translators/RDAPatientStatementTranslator.ts
 // Versión 4.0 — alineación exacta con JSON oficial MinSalud RDA
 
@@ -219,7 +220,7 @@ function buildPatientResource(p: RDAPatientRow): object {
             valueCoding: {
                 system: CS.COL_ETHNICITY,
                 code: p.ethnicity_code,
-                ...(p.ethnicity_display && { display: p.ethnicity_display }),
+                display: knownDisplay(CS.COL_ETHNICITY, p.ethnicity_code, p.ethnicity_display),
             },
         });
     }
@@ -229,7 +230,7 @@ function buildPatientResource(p: RDAPatientRow): object {
             valueCoding: {
                 system: CS.COL_DISABILITY,
                 code: p.disability_code,
-                ...(p.disability_display && { display: p.disability_display }),
+                display: knownDisplay(CS.COL_DISABILITY, p.disability_code, p.disability_display),
             },
         });
     }
@@ -239,7 +240,7 @@ function buildPatientResource(p: RDAPatientRow): object {
             valueCoding: {
                 system: CS.COL_GENDER_IDENTITY,
                 code: p.gender_identity_code,
-                ...(p.gender_identity_display && { display: p.gender_identity_display }),
+                display: knownDisplay(CS.COL_GENDER_IDENTITY, p.gender_identity_code, p.gender_identity_display),
             },
         });
     }
@@ -310,7 +311,7 @@ function buildPatientResource(p: RDAPatientRow): object {
                     valueCoding: {
                         system: CS.COL_GENDER_GROUP,
                         code: p.biological_gender_code,
-                        ...(p.biological_gender_display && { display: p.biological_gender_display }),
+                        display: knownDisplay(CS.COL_GENDER_GROUP, p.biological_gender_code, p.biological_gender_display),
                     },
                 }],
             },
@@ -336,7 +337,7 @@ function buildPatientResource(p: RDAPatientRow): object {
                 valueCoding: {
                     system: CS.COL_RESIDENCE_ZONE,
                     code: p.residence_zone_code,
-                    ...(p.residence_zone_display && { display: p.residence_zone_display }),
+                    display: knownDisplay(CS.COL_RESIDENCE_ZONE, p.residence_zone_code, p.residence_zone_display),
                 },
             });
         }
@@ -353,6 +354,7 @@ function buildPatientResource(p: RDAPatientRow): object {
                         valueCoding: {
                             code: p.divipola_code,
                             system: CS.DIVIPOLA,
+                            display: p.address_city || p.divipola_code,
                         },
                     }],
                 },
@@ -364,6 +366,7 @@ function buildPatientResource(p: RDAPatientRow): object {
                     valueCoding: {
                         system: CS.ISO_3166_1,
                         code: p.nationality_code ?? '170',
+                        display: (p.nationality_code ?? '170') === '170' ? 'Colombia' : (p.nationality_code as string),
                     },
                 }],
             },

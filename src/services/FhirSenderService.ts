@@ -7,7 +7,7 @@ import { MinisterioAuthService } from './MinisterioAuthService';
 import { logger } from '../utils/logger';
 
 /** Códigos HTTP que indican error en el contenido del RDA (reintentar no sirve sin corregirlo) */
-const NO_REINTENTABLES = new Set([400, 404, 409, 412, 413, 422]);
+const NO_REINTENTABLES = new Set([400, 403, 404, 409, 412, 413, 422]);
 
 export class FhirSenderService {
   constructor(

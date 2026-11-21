@@ -1,3 +1,4 @@
+import { display as knownDisplay, buildDocumentReference as buildDocumentReferenceEPI, buildDoseAndRate } from './rda/common';
 // src/translators/RDAAmbulatoryTranslator.ts
 // RDA de Consulta Externa — alineación exacta con JSON oficial MinSalud
 
@@ -162,8 +163,14 @@ export interface RDAAmbulatoryMedicationRequest {
     /** Valor dosis */
     dose_value?: number;
     dose_unit?: string;
-    /** Código unidad de medida (UMM) */
+    /** Código unidad de medida (UMM), ej. mg */
     dose_unit_code?: string;
+    /** Cada cuánto se administra (valor), ej. 8 → junto con frequency_code "2" (Horas) = cada 8 horas */
+    frequency_value?: number;
+    /** Forma farmacéutica (MipresDoseForm), opcional: cantidad + código, ej. 1 tableta */
+    dose_form_code?: string;
+    dose_form_display?: string;
+    dose_form_quantity?: number;
     /** Cantidad a dispensar */
     dispense_quantity_value?: number;
     dispense_quantity_unit?: string;
@@ -221,6 +228,10 @@ export interface RDAAmbulatoryDocumentReference {
     /** Fecha del documento ISO-8601 */
     date?: string;
     description?: string;
+    /** PDF del documento (historia de la consulta / epicrisis) en base64 */
+    pdf_base64?: string;
+    /** O bien, URL pública/segura donde está el documento */
+    url?: string;
 }
 
 /** Estructura principal que debe recibir el endpoint POST /api/ehr/rda/ambulatory/translate */
@@ -440,7 +451,7 @@ function buildPatientResource(p: RDAAmbulatoryPatient): object {
             valueCoding: {
                 system: CS.COL_ETHNICITY,
                 code: p.ethnicity_code,
-                ...(p.ethnicity_display && { display: p.ethnicity_display }),
+                display: knownDisplay(CS.COL_ETHNICITY, p.ethnicity_code, p.ethnicity_display),
             },
         });
     }
@@ -450,7 +461,7 @@ function buildPatientResource(p: RDAAmbulatoryPatient): object {
             valueCoding: {
                 system: CS.COL_DISABILITY,
                 code: p.disability_code,
-                ...(p.disability_display && { display: p.disability_display }),
+                display: knownDisplay(CS.COL_DISABILITY, p.disability_code, p.disability_display),
             },
         });
     }
@@ -460,7 +471,7 @@ function buildPatientResource(p: RDAAmbulatoryPatient): object {
             valueCoding: {
                 system: CS.COL_GENDER_IDENTITY,
                 code: p.gender_identity_code,
-                ...(p.gender_identity_display && { display: p.gender_identity_display }),
+                display: knownDisplay(CS.COL_GENDER_IDENTITY, p.gender_identity_code, p.gender_identity_display),
             },
         });
     }
@@ -506,7 +517,7 @@ function buildPatientResource(p: RDAAmbulatoryPatient): object {
                     valueCoding: {
                         system: CS.COL_GENDER_GROUP,
                         code: p.biological_gender_code,
-                        ...(p.biological_gender_display && { display: p.biological_gender_display }),
+                        display: knownDisplay(CS.COL_GENDER_GROUP, p.biological_gender_code, p.biological_gender_display),
                     },
                 }],
             },
@@ -526,7 +537,7 @@ function buildPatientResource(p: RDAAmbulatoryPatient): object {
                 valueCoding: {
                     system: CS.COL_RESIDENCE_ZONE,
                     code: p.residence_zone_code,
-                    ...(p.residence_zone_display && { display: p.residence_zone_display }),
+                    display: knownDisplay(CS.COL_RESIDENCE_ZONE, p.residence_zone_code, p.residence_zone_display),
                 },
             });
         }
@@ -539,7 +550,7 @@ function buildPatientResource(p: RDAAmbulatoryPatient): object {
                 _city: {
                     extension: [{
                         url: EXT.DIVIPOLA_MUNICIPALITY,
-                        valueCoding: { code: p.divipola_code, system: CS.DIVIPOLA },
+                        valueCoding: { code: p.divipola_code, system: CS.DIVIPOLA, display: p.address_city || p.divipola_code },
                     }],
                 },
             }),
@@ -547,7 +558,7 @@ function buildPatientResource(p: RDAAmbulatoryPatient): object {
             _country: {
                 extension: [{
                     url: EXT.COUNTRY_CODE,
-                    valueCoding: { system: CS.ISO_3166_1, code: p.nationality_code ?? '170' },
+                    valueCoding: { system: CS.ISO_3166_1, code: p.nationality_code ?? '170', display: (p.nationality_code ?? '170') === '170' ? 'Colombia' : (p.nationality_code as string) },
                 }],
             },
             ...(addrExts.length > 0 && { extension: addrExts }),
@@ -952,15 +963,8 @@ function buildMedicationRequestResource(
         };
     }
 
-    if (m.dose_value !== undefined) {
-        dosageInstruction.doseAndRate = [{
-            doseQuantity: {
-                value: m.dose_value,
-                unit: m.dose_unit ?? '',
-                ...(m.dose_unit_code && { system: CS.UMM, code: m.dose_unit_code }),
-            },
-        }];
-    }
+    const doseAndRate = buildDoseAndRate(m);
+    if (doseAndRate.length > 0) dosageInstruction.doseAndRate = doseAndRate;
 
     const dispenseExt: object[] = [];
     if (m.dispense_quantity_value !== undefined && m.dispense_unit_code) {
@@ -1189,37 +1193,10 @@ function buildDocumentReferenceResource(
     doc: RDAAmbulatoryDocumentReference,
     pRef: string,
     orgRef: string,
+    encRef?: string,
 ): object {
-    const typeCoding: object[] = [];
-    if (doc.loinc_code) typeCoding.push({ system: CS.LOINC, code: doc.loinc_code, display: doc.loinc_display ?? doc.loinc_code });
-    if (doc.doc_type_code) typeCoding.push({ system: CS.COL_DOC_TYPES, code: doc.doc_type_code, display: doc.doc_type_display ?? doc.doc_type_code });
-
-    return {
-        resourceType: 'DocumentReference',
-        id: `DocumentReference-${doc.id}`,
-        meta: { profile: [PROFILES.DOCUMENT_REFERENCE] },
-        text: {
-            status: 'generated',
-            div: '<div xmlns="http://www.w3.org/1999/xhtml">Document Reference</div>',
-        },
-        status: 'current',
-        type: { coding: typeCoding.length > 0 ? typeCoding : [{ system: CS.LOINC, code: '18842-5', display: 'Discharge summary' }] },
-        category: [{
-            coding: [{ system: CS.LOINC, code: '55108-5', display: 'Clinical presentation Document' }],
-        }],
-        subject: { reference: pRef },
-        date: doc.date ?? nowISO(),
-        author: [{ reference: orgRef }],
-        custodian: { reference: orgRef },
-        description: doc.description ?? 'Documento de soporte RDA',
-        securityLabel: [{
-            coding: [{
-                system: CS.CONFIDENTIALITY,
-                code: 'N',
-                display: 'Normal',
-            }],
-        }],
-    };
+    // Perfil DocumentReferenceEPIRDA: custodian fijo "Organization/MinSalud", tipo EPI, etc.
+    return buildDocumentReferenceEPI(doc, pRef, orgRef, encRef);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1338,7 +1315,7 @@ export class RDAAmbulatoryTranslator {
             buildServiceRequestResource(s, i, pRef, encRef, prRef));
 
         const docRefResources = documentRefs.map(d =>
-            buildDocumentReferenceResource(d, pRef, oRef));
+            buildDocumentReferenceResource(d, pRef, oRef, frag('Encounter-0')));
 
         // ── Observaciones opcionales ──────────────────────────────────────────
         const incapObs = input.incapacidad

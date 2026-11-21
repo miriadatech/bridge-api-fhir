@@ -6,7 +6,7 @@ Middleware multi‑cliente para la **Interoperabilidad de la Historia Clínica E
 
 ```bash
 npm install && cp .env.example .env
-psql -f database/migrations/002_interoperabilidad_rda.sql
+npm run migrate                     # migración (usa la conexión del .env)
 npm run build && npm start          # API
 npm run worker:start                # worker de envío
 npm test                            # pruebas de los traductores
